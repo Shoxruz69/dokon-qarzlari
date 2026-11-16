@@ -1637,12 +1637,12 @@
     let statsSelectedDate = getLocalDateString();
     let activeCustomerId = null;
     let shopData = {
-      shopId: '5832B1F2',
+      shopId: '',
       shopName: "Do'kon Hisobi"
     };
 
     const urlParams = new URLSearchParams(window.location.search);
-    shopData.shopId = urlParams.get('shop_id') || tg?.initDataUnsafe?.start_param || getLocalCache('dh_shop_id') || '5832B1F2';
+    shopData.shopId = urlParams.get('shop_id') || tg?.initDataUnsafe?.start_param || getLocalCache('dh_shop_id') || '';
 
     // ============================================================
     // TEZKOR MAHALLIY KESH (0.01s da yuklanish uchun)
@@ -1701,7 +1701,7 @@
     async function apiRequest(endpoint, method = 'GET', body = null) {
       const headers = {
         'Content-Type': 'application/json',
-        'X-Shop-Id': shopData.shopId || '5832B1F2',
+        'X-Shop-Id': shopData.shopId || '',
         'X-Telegram-User-Id': String(tg?.initDataUnsafe?.user?.id || ''),
         'X-Admin-Name': String(tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || ''),
         'X-Telegram-Init-Data': tg?.initData || ''
@@ -1778,7 +1778,7 @@
       if (!stats) return;
       if (stats.shop_name) {
         shopData.shopName = stats.shop_name;
-        shopData.shopId = stats.shop_id || shopData.shopId || '5832B1F2';
+        shopData.shopId = stats.shop_id || shopData.shopId || '';
         const titleEl = document.getElementById('headerShopTitle');
         if (titleEl) titleEl.textContent = stats.shop_name;
         const idEl = document.getElementById('shopIdText');
@@ -2869,7 +2869,7 @@
 
       try {
         const payload = {
-          shop_id: shopData.shopId || '5832B1F2',
+          shop_id: shopData.shopId || '',
           full_name: name,
           phone: phoneDigits.length >= 7 ? (phoneRaw.startsWith('+') ? phoneRaw.replace(/\s+/g, '') : '+' + phoneDigits) : null,
           amount: amount,

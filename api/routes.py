@@ -52,7 +52,7 @@ async def cors_middleware(request: web.Request, handler):
 # ============================================================
 # SHOP RESOLVER HELPER
 # ============================================================
-_cached_default_shop_id: Optional[str] = "5832B1F2"
+_cached_default_shop_id: Optional[str] = None
 
 async def resolve_shop_id(request: web.Request) -> str:
     """Har qanday manbadan do'kon kodini tezkor aniqlash (keshlangan)"""

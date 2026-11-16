@@ -259,7 +259,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
     shops_data: Dict[str, dict] = {}
     
     for cust in customers:
-        shop_id = cust.get("shop_id") or "5832B1F2"
+        shop_id = cust.get("shop_id") or "DEFAULT"
         if shop_id not in shops_data:
             shops_data[shop_id] = {
                 "shop_name": cust.get("shop_name") or "Do'kon",
@@ -323,7 +323,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
 
     # Agar umuman qarzdor bo'lmasa, default shop uchun hisobot tayyorlash
     if not shops_data:
-        shops_data["5832B1F2"] = {
+        shops_data["DEFAULT"] = {
             "shop_name": "Do'kon",
             "total_debt": 0.0,
             "customers": [],

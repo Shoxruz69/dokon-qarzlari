@@ -115,6 +115,7 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
             debts = await get_customer_active_debts(cust["id"])
             total_debt = sum(d["amount"] for d in debts if d.get("status") in ("active", "overdue"))
             
+            shop_title = cust.get('shop_name') or "Do'kon"
             if total_debt > 0 and debts:
                 nearest_due = debts[0]["due_date"]
                 products = ", ".join(d["description"] for d in debts[:3])
@@ -123,7 +124,7 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
                     
                 await message.answer(
                     f"Assalomu alaykum, <b>{esc(cust['full_name'])}</b>! 👋\n\n"
-                    f"Sizning <b>{esc(cust.get('shop_name', 'Do\'kon'))}</b> do'konidan qarzingiz bor:\n\n"
+                    f"Sizning <b>{esc(shop_title)}</b> do'konidan qarzingiz bor:\n\n"
                     f"💰 <b>Qarzingiz:</b> <b>{format_amount(total_debt)}</b>\n"
                     f"⏰ <b>To'lash sanasi:</b> <b>{format_date_uz(nearest_due)}</b>\n"
                     f"📦 <b>Nima olingan:</b> {esc(products)}\n\n"
@@ -134,7 +135,7 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
             else:
                 await message.answer(
                     f"Assalomu alaykum, <b>{esc(cust['full_name'])}</b>! 👋\n\n"
-                    f"<b>{esc(cust.get('shop_name', 'Do\'kon'))}</b> do'konida sizning hech qanday qarzingiz yo'q. "
+                    f"<b>{esc(shop_title)}</b> do'konida sizning hech qanday qarzingiz yo'q. "
                     f"Barcha to'lovlar to'liq amalga oshirilgan! ✅\n\n"
                     f"Hisob-kitoblar tarixini ko'rish uchun pastdagi tugmani bosing:",
                     parse_mode="HTML",
@@ -353,6 +354,7 @@ async def process_customer_phone(message: Message, state: FSMContext):
     for cust in customers:
         debts = await get_customer_active_debts(cust["id"])
         total_debt = sum(d["amount"] for d in debts if d.get("status") in ("active", "overdue"))
+        shop_title = cust.get('shop_name') or "Do'kon"
         
         if total_debt > 0 and debts:
             nearest_due = debts[0]["due_date"]
@@ -362,7 +364,7 @@ async def process_customer_phone(message: Message, state: FSMContext):
                 
             await message.answer(
                 f"Assalomu alaykum, <b>{esc(cust['full_name'])}</b>! 👋\n\n"
-                f"Sizning <b>{esc(cust.get('shop_name', 'Do\'kon'))}</b> do'konidan qarzingiz bor:\n\n"
+                f"Sizning <b>{esc(shop_title)}</b> do'konidan qarzingiz bor:\n\n"
                 f"💰 <b>Qarzingiz:</b> <b>{format_amount(total_debt)}</b>\n"
                 f"⏰ <b>To'lash sanasi:</b> <b>{format_date_uz(nearest_due)}</b>\n"
                 f"📦 <b>Nima olingan:</b> {esc(products)}\n\n"
@@ -373,7 +375,7 @@ async def process_customer_phone(message: Message, state: FSMContext):
         else:
             await message.answer(
                 f"Assalomu alaykum, <b>{esc(cust['full_name'])}</b>! 👋\n\n"
-                f"<b>{esc(cust.get('shop_name', 'Do\'kon'))}</b> do'konida sizning hech qanday qarzingiz yo'q. "
+                f"<b>{esc(shop_title)}</b> do'konida sizning hech qanday qarzingiz yo'q. "
                 f"Barcha to'lovlar to'liq amalga oshirilgan! ✅",
                 parse_mode="HTML",
                 reply_markup=get_customer_webapp_kb(cust["id"])

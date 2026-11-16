@@ -623,7 +623,7 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
                 COUNT(DISTINCT CASE WHEN d.status = 'active' THEN d.id END) as active_debts,
                 COUNT(DISTINCT CASE WHEN d.status = 'overdue' THEN d.id END) as overdue_debts,
                 COALESCE(SUM(CASE WHEN d.status IN ('active', 'overdue') THEN d.amount END), 0) as total_debt_sum,
-                COUNT(DISTINCT CASE WHEN d.due_date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '7 days') 
+                COUNT(DISTINCT CASE WHEN d.due_date BETWEEN DATE('now') AND DATE('now', '+7 days') 
                            AND d.status = 'active' THEN d.id END) as due_this_week
             FROM customers c
             LEFT JOIN debts d ON d.customer_id = c.id

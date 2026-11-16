@@ -251,6 +251,8 @@ async def init_db():
                     screenshot_url TEXT,
                     reminder_sent BOOLEAN DEFAULT FALSE,
                     admin_note TEXT,
+                    created_by_admin_id BIGINT,
+                    created_by_admin_name TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (customer_id) REFERENCES customers(id),
@@ -276,6 +278,7 @@ async def init_db():
                     paid_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     note TEXT,
                     admin_id BIGINT NOT NULL,
+                    admin_name TEXT,
                     FOREIGN KEY (debt_id) REFERENCES debts(id)
                 );
                 
@@ -286,6 +289,18 @@ async def init_db():
                 CREATE INDEX IF NOT EXISTS idx_debts_status ON debts(status);
                 CREATE INDEX IF NOT EXISTS idx_debts_due_date ON debts(due_date);
             """)
+            try:
+                await db.execute("ALTER TABLE debts ADD COLUMN created_by_admin_id BIGINT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE debts ADD COLUMN created_by_admin_name TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE payment_history ADD COLUMN admin_name TEXT;")
+            except Exception:
+                pass
             await db.commit()
         logger.info("✅ SQLite ma'lumotlar bazasi tayyorlandi")
 
