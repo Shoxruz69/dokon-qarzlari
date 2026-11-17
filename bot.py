@@ -105,14 +105,30 @@ async def setup_bot_commands(bot: Bot):
     ]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
-        menu_url = "https://dokon-qarzlari-wf96.onrender.com/?shop_id=64EB6AB2&v=2.1"
+        
+        # 1. Barcha mijozlar uchun default pastki menyu
+        customer_url = "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.2"
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
-                text="Do'kon Paneli",
-                web_app=WebAppInfo(url=menu_url)
+                text="Mening qarzlarim",
+                web_app=WebAppInfo(url=customer_url)
             )
         )
-        logger.info(f"✅ Bot komandalari va Menu tugmasi muvaffaqiyatli o'rnatildi (URL: {menu_url})")
+
+        # 2. Faqat Asosiy Admin (G'iyos - 7370403444) uchun Do'kon Paneli
+        admin_url = "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.1"
+        try:
+            await bot.set_chat_menu_button(
+                chat_id=7370403444,
+                menu_button=MenuButtonWebApp(
+                    text="Do'kon Paneli",
+                    web_app=WebAppInfo(url=admin_url)
+                )
+            )
+        except Exception:
+            pass
+
+        logger.info("✅ Bot komandalari va Menu tugmalari (Admin va Mijoz) muvaffaqiyatli o'rnatildi")
     except Exception as e:
         logger.warning(f"⚠️ Bot komandalarini o'rnatishda xatolik: {e}")
 

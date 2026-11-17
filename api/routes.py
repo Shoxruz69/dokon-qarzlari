@@ -505,16 +505,19 @@ async def handle_get_me(request: web.Request):
     # 2. Telegram user ID orqali aniqlash
     if user_id_str and user_id_str.isdigit():
         uid = int(user_id_str)
+        
+        # Admin tekshiruvi: Faqat bazadagi admin yoki settingsdagi admin (7370403444)
         admin = await get_admin_by_telegram_id(uid)
         if not admin and settings.is_admin_id(uid):
             # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
             admin_name = resolve_admin_label(uid)
-            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Do'kon")
+            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
 
         if admin:
             bootstrap = await _get_admin_bootstrap_data(admin, admin["shop_id"])
             return web.json_response(bootstrap)
 
+        # Admindan boshqa har qanday foydalanuvchi — FAQAT MIJOZ!
         custs = await get_customer_by_telegram_id(uid)
         if custs:
             cust = custs[0]
@@ -525,22 +528,22 @@ async def handle_get_me(request: web.Request):
                 "debts": debts
             })
 
-        # Agar telegram user_id admin bo'lmasa va mijoz ham topilmasa — HECH QACHON adminga chiqarmaymiz!
+        # Agar telegram user_id admin bo'lmasa va mijoz ham topilmasa — FAQAT MIJOZ!
         return web.json_response({
             "role": "customer",
             "customer": None,
             "debts": []
         })
 
-    # 3. Fallback: agar role=customer bo'lsa
-    if role_param == "customer":
+    # 3. Standart holatda — agar role=admin deb ko'rsatilmagan bo'lsa — FAQAT MIJOZ KO'RINISHI!
+    if role_param != "admin":
         return web.json_response({
             "role": "customer",
             "customer": None,
             "debts": []
         })
 
-    # 4. Standart holatda Admin do'koni (Stats va Customers bilan birga)
+    # 4. Faqat role=admin bo'lganda Admin do'koni
     shop_id = await resolve_shop_id(request)
     admin = await get_admin_by_shop_id(shop_id)
     if admin:
@@ -549,11 +552,9 @@ async def handle_get_me(request: web.Request):
         return web.json_response(bootstrap)
 
     return web.json_response({
-        "role": "admin",
-        "admin": None,
-        "shop_id": shop_id,
-        "stats": None,
-        "customers": []
+        "role": "customer",
+        "customer": None,
+        "debts": []
     })
 
 async def handle_index(request: web.Request):

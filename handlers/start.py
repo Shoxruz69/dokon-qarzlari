@@ -115,54 +115,49 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     
     is_env_admin = settings.is_admin_id(user_id)
 
-    # 1. ADMIN TEKSHIRUVI
-    if not admin:
-        admin = await get_admin_by_telegram_id(user_id)
-
-    # Agar bazada admin topilmasa, lekin tizim administratori bo'lsa
-    if not admin and is_env_admin:
-        first_admin = await get_first_active_admin()
-        if first_admin and first_admin.get("shop_name"):
-            admin = first_admin
-
-    # Agar bazada allaqachon do'kon yaratilgan bo'lsa -> HECH QACHON qayta do'kon ochishni so'ramaymiz!
-    if (is_env_admin or admin) and admin and admin.get("shop_name"):
-        shop_name = admin.get("shop_name", "Do'kon")
-        shop_id = admin.get("shop_id", "")
-        admin_name = admin.get("full_name") or resolve_admin_label(user_id)
-        
-        await message.answer(
-            f"Assalomu alaykum, <b>{esc(admin_name)}</b>!\n\n"
-            f"🏪 Do'kon: <b>{esc(shop_name)}</b>\n"
-            f"🆔 Do'kon kodi: <code>{shop_id}</code>\n\n"
-            f"Qarzlarni boshqarish, yangi mijoz kiritish va hisobotlarni ko'rish uchun "
-            f"pastdagi <b>Do'kon Paneli</b> tugmasini bosing:\n\n"
-            f"<i>✏️ Do'kon nomini o'zgartirish uchun: /nomini_ozgartirish</i>",
-            parse_mode="HTML",
-            reply_markup=get_admin_main_inline_kb(shop_id)
-        )
-        await message.answer(
-            "👇 Mini App menyusi faol:",
-            reply_markup=get_admin_reply_kb(shop_id)
-        )
-        return
-
-    # Agar admin hali o'z do'konini ochmagan bo'lsa -> Ro'yxatdan o'tishni boshlaymiz (faqat 1 marta!)
+    # 1. ADMIN TEKSHIRUVI (Faqat va faqat G'iyos - 7370403444 uchun!)
     if is_env_admin:
-        admin_default_name = "G'iyos" if user_id == 7370403444 else (message.from_user.full_name or "G'iyos")
+        if not admin:
+            admin = await get_admin_by_telegram_id(user_id)
+        if not admin:
+            admin = await get_first_active_admin()
+
+        if admin and admin.get("shop_name"):
+            shop_name = admin.get("shop_name", "Kech Harbiy Do'kon")
+            shop_id = "64EB6AB2"
+            admin_name = admin.get("full_name") or "G'iyos"
+            
+            await message.answer(
+                f"Assalomu alaykum, <b>{esc(admin_name)}</b>!\n\n"
+                f"🏪 Do'kon: <b>{esc(shop_name)}</b>\n"
+                f"🆔 Do'kon kodi: <code>{shop_id}</code>\n\n"
+                f"Qarzlarni boshqarish, yangi mijoz kiritish va hisobotlarni ko'rish uchun "
+                f"pastdagi <b>Do'kon Paneli</b> tugmasini bosing:\n\n"
+                f"<i>✏️ Do'kon nomini o'zgartirish uchun: /nomini_ozgartirish</i>",
+                parse_mode="HTML",
+                reply_markup=get_admin_main_inline_kb(shop_id)
+            )
+            await message.answer(
+                "👇 Mini App menyusi faol:",
+                reply_markup=get_admin_reply_kb(shop_id)
+            )
+            return
+
+        # Faqat admin hali do'kon ochmagan bo'lsa (birinchi marta)
         await message.answer(
-            f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
+            "Assalomu alaykum, <b>G'iyos</b>! 👋\n\n"
             "✅ Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
             "Barcha boshqaruv huquqlari sizga beriladi.\n\n"
-            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Kech Harbiy Savdo</i> yoki <i>Fayz Savdo</i>):",
+            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Kech Harbiy Savdo</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
-        await state.update_data(full_name=admin_default_name)
+        await state.update_data(full_name="G'iyos")
         await state.set_state(AdminSetup.waiting_for_shop_name)
         return
 
-    # 2. MIJOZ TEKSHIRUVI (Agar avval raqamini tasdiqlagan bo'lsa)
+    # 2. ADMINDAN BOSHQA HAR QANDAY FOYDALANUVCHI — FAQAT VA FAQAT MIJOZ!
+    # Aslo "do'kon oching" demaymiz, admin paneli ko'rsatmaymiz!
     customers = await get_customer_by_telegram_id(user_id)
     if customers:
         for cust in customers:
