@@ -213,6 +213,77 @@ async def run_tests():
     assert res_pay.status == 200
     print("✅ REST API: /api/debt/{debt_id}/pay qarzni to'ladi!")
 
+    # 10. Kategoriya (Harbiy Guruh) va Karta Sozlamalarini tekshirish
+    print("\n10. Harbiy guruhlar (kategoriyalar) va karta sozlamalarini tekshirish...")
+    # POST /api/categories/add
+    res_cat_add = await client.post("/api/categories/add", json={
+        "shop_id": shop_id,
+        "name": "1-rota"
+    })
+    assert res_cat_add.status == 200
+    cat_add_json = await res_cat_add.json()
+    assert cat_add_json["ok"] is True
+    print("✅ REST API: /api/categories/add harbiy guruh qo'shdi!")
+
+    # GET /api/categories
+    res_cats = await client.get(f"/api/categories?shop_id={shop_id}")
+    assert res_cats.status == 200
+    cats_json = await res_cats.json()
+    cat_names = [c["name"] for c in (cats_json if isinstance(cats_json, list) else cats_json.get("categories", []))]
+    assert "1-rota" in cat_names
+    print(f"✅ REST API: /api/categories ro'yxatni qaytardi: {cat_names}")
+
+    # Mijozni kategoriya bilan qo'shish
+    res_cust_cat = await client.post("/api/customers/add", json={
+        "shop_id": shop_id,
+        "full_name": "Serjant Rustam",
+        "phone": "+998901239988",
+        "category": "1-rota",
+        "amount": 80000,
+        "description": "Choy va shirinliklar",
+        "due_date": "2026-11-25"
+    })
+    assert res_cust_cat.status == 200
+    cust_cat_json = await res_cust_cat.json()
+    cat_cust_id = cust_cat_json["customer_id"]
+
+    # Mijoz tafsilotida kategoriya borligini tekshirish
+    res_cat_cust_det = await client.get(f"/api/customer/{cat_cust_id}?shop_id={shop_id}")
+    assert res_cat_cust_det.status == 200
+    cat_cust_det_json = await res_cat_cust_det.json()
+    assert cat_cust_det_json["category"] == "1-rota", f"Category xato: {cat_cust_det_json.get('category')}"
+    print("✅ REST API: Mijoz harbiy guruh (kategoriya) bilan saqlandi va ko'rsatildi!")
+
+    # POST /api/settings/card (Admin karta ma'lumotlarini saqlash)
+    res_card = await client.post("/api/settings/card", json={
+        "shop_id": shop_id,
+        "card_number": "8600123456789012",
+        "card_holder": "G'iyos Rahmonov",
+        "bank_name": "TBC Bank"
+    })
+    assert res_card.status == 200
+    card_json = await res_card.json()
+    assert card_json["ok"] is True
+    print("✅ REST API: /api/settings/card karta sozlamalarini saqladi!")
+
+    # GET /api/me ichida admin karta va kategoriyalar qaytishini tekshirish
+    res_me_settings = await client.get(f"/api/me?user_id={test_tid}")
+    assert res_me_settings.status == 200
+    me_settings_json = await res_me_settings.json()
+    assert me_settings_json["admin"]["card_number"] == "8600123456789012"
+    assert me_settings_json["admin"]["card_holder"] == "G'iyos Rahmonov"
+    assert len(me_settings_json.get("categories", [])) >= 1
+    print("✅ REST API: /api/me karta va guruhlar bootstrap ma'lumotlarini qaytardi!")
+
+    # POST /api/settings/broadcast-card (Qarzdorlarga karta yuborish)
+    res_broadcast = await client.post("/api/settings/broadcast-card", json={
+        "shop_id": shop_id
+    })
+    assert res_broadcast.status == 200
+    bc_json = await res_broadcast.json()
+    assert bc_json["ok"] is True
+    print(f"✅ REST API: /api/settings/broadcast-card xabarnoma yubordi (sent: {bc_json.get('sent_count', 0)})!")
+
     await client.close()
     print("\n" + "=" * 60)
     print("🎉 BARCHA TEKSHIRUVLAR 100% MUVAFFAQIYATLI O'TDI!")

@@ -11,7 +11,8 @@
     (function() {
       try {
         var p = new URLSearchParams(window.location.search);
-        if (p.get('role') === 'customer') {
+        var me = JSON.parse(localStorage.getItem('dh_user_me') || 'null');
+        if (p.get('role') === 'customer' || (me && me.role === 'customer' && !p.has('shop_id'))) {
           document.documentElement.classList.add('is-customer-role');
         }
       } catch(e) {}
@@ -1374,7 +1375,7 @@
     </div>
 
     <!-- FILTERS -->
-    <div class="filter-pills">
+    <div class="filter-pills" id="filterPillsContainer">
       <button class="filter-pill active" onclick="setFilter('all', this)">Barchasi</button>
       <button class="filter-pill" onclick="setFilter('overdue', this)">
         <span class="badge-dot dot-danger"></span> 3 kundan beri to'lamagan
@@ -1385,6 +1386,7 @@
       <button class="filter-pill" onclick="setFilter('paid', this)">
         <span class="badge-dot dot-success"></span> Qarz yo'q
       </button>
+      <span id="categoryFilterPills" style="display:contents;"></span>
     </div>
 
     <!-- LIST -->
@@ -1437,6 +1439,21 @@
           <button type="button" class="chip-btn" data-country="other" onclick="setPhoneCountry('inp-phone', 'other', this)">🌐 Boshqa</button>
         </div>
         <div class="error-msg" id="err-phone"></div>
+      </div>
+
+      <!-- Harbiy Bo'linma / Guruh (Kategoriya) -->
+      <div class="form-group">
+        <label class="form-label">Harbiy Bo'linma / Guruh <span style="font-weight:400;color:var(--text-light);font-size:12px">(ixtiyoriy)</span></label>
+        <div class="input-box">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </span>
+          <select class="custom-input" id="inp-category" style="cursor:pointer">
+            <option value="">Guruhsiz (Oddiy)</option>
+          </select>
+        </div>
       </div>
 
       <!-- Summa -->
@@ -1566,6 +1583,133 @@
   </main>
 
   <!-- ============================================================
+       SCREEN: SETTINGS (SOZLAMALAR)
+       ============================================================ -->
+  <main class="screen" id="screen-settings">
+    <div class="section-header" style="margin-top:0">
+      <h2 class="section-title">Sozlamalar</h2>
+    </div>
+
+    <!-- 1. KARTA VA TO'LOV SOZLAMALARI -->
+    <div class="form-card" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:20px;">💳</span>
+        <div>
+          <h3 style="font-size:16px; font-weight:700; color:var(--text-main); margin:0;">To'lov Kartasi Sozlamalari</h3>
+          <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Mijozlar to'lov o'tkazishi uchun admin kartasi</p>
+        </div>
+      </div>
+
+      <!-- Karta Vizual Ko'rinishi (Fintech Card) -->
+      <div class="bank-card-preview" id="bankCardPreview" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #047857 100%); border-radius: 14px; padding: 18px 20px; color: #fff; margin-bottom: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); position: relative; overflow: hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#A7F3D0;" id="cardBankDisplay">UZCARD / HUMO</span>
+          <svg width="32" height="24" viewBox="0 0 32 24" fill="none"><rect width="32" height="24" rx="4" fill="rgba(255,255,255,0.15)"/><circle cx="12" cy="12" r="7" fill="rgba(255,255,255,0.4)"/><circle cx="20" cy="12" r="7" fill="rgba(255,255,255,0.3)"/></svg>
+        </div>
+        <div style="font-family:'Courier New', monospace; font-size:18px; font-weight:700; letter-spacing:2px; margin-bottom:14px;" id="cardNumberDisplay">8600 •••• •••• ••••</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+          <div>
+            <div style="font-size:9px; text-transform:uppercase; opacity:0.75; letter-spacing:0.5px;">Karta Egasi</div>
+            <div style="font-size:13px; font-weight:700; text-transform:uppercase;" id="cardHolderDisplay">G'IYOS</div>
+          </div>
+          <div style="font-size:11px; background:rgba(255,255,255,0.15); padding:3px 8px; border-radius:6px; font-weight:600;">Asosiy Karta</div>
+        </div>
+      </div>
+
+      <!-- Inputlar -->
+      <div class="form-group">
+        <label class="form-label">Karta Raqami *</label>
+        <div class="input-box">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </span>
+          <input type="text" class="custom-input" id="inp-card-number" placeholder="8600 0000 0000 0000" maxlength="19" inputmode="numeric" oninput="onCardNumberInput(this)">
+        </div>
+        <div class="field-error" id="err-card-number"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Karta Egasi (Ism Familiya) *</label>
+        <div class="input-box">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <input type="text" class="custom-input" id="inp-card-holder" placeholder="Masalan: G'iyos" oninput="onCardHolderInput(this)">
+        </div>
+        <div class="field-error" id="err-card-holder"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Bank yoki Karta Turi <span style="font-weight:400;color:var(--text-light);font-size:12px">(ixtiyoriy)</span></label>
+        <div class="input-box">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 2l9 8H3l9-8z"/></svg>
+          </span>
+          <input type="text" class="custom-input" id="inp-bank-name" placeholder="Masalan: TBC Bank, Uzcard, Humo" oninput="onBankNameInput(this)">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:16px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveCardSettings()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Saqlash
+        </button>
+      </div>
+
+      <!-- Xabarnoma yuborish bo'limi -->
+      <div style="margin-top:20px; padding-top:16px; border-top:1px dashed var(--border);">
+        <button class="btn" style="width:100%; background: linear-gradient(135deg, #059669 0%, #10B981 100%); color:white; font-weight:700; padding:14px; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="promptBroadcastCard()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Mijozlarga Karta Raqamini Yuborish
+        </button>
+        <p style="font-size:11.5px; color:var(--text-muted); margin:8px 0 0 0; text-align:center; line-height:1.4;">
+          Ushbu tugmani bossangiz, do'kondan qarzi bor barcha mijozlarning Telegramiga to'lov kartangiz avtomatik yuboriladi.
+        </p>
+      </div>
+    </div>
+
+    <!-- 2. HARBIY BO'LINMALAR VA GURUHLAR (KATEGORIYALAR) -->
+    <div class="form-card" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:20px;">🎖️</span>
+        <div>
+          <h3 style="font-size:16px; font-weight:700; color:var(--text-main); margin:0;">Harbiy Guruhlar / Bo'linmalar</h3>
+          <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Mijozlarni rotasi yoki vzvodiga qarab ajratish</p>
+        </div>
+      </div>
+
+      <!-- Kategoriya qo'shish formasi -->
+      <div style="display:flex; gap:8px; margin-top:14px; margin-bottom:16px;">
+        <input type="text" class="custom-input" id="inp-new-category" placeholder="Masalan: 1-rota, 2-vzvod..." style="flex:1;">
+        <button class="btn btn-primary" style="padding:0 18px; white-space:nowrap;" onclick="addNewCategory()">
+          + Qo'shish
+        </button>
+      </div>
+
+      <!-- Kategoriyalar ro'yxati -->
+      <div id="settingsCategoriesList" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="skeleton-card" style="height:45px"></div>
+      </div>
+    </div>
+
+    <!-- 3. DO'KON MA'LUMOTLARI -->
+    <div class="form-card">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:20px;">🏪</span>
+        <div>
+          <h3 style="font-size:15px; font-weight:700; color:var(--text-main); margin:0;">Do'kon Ma'lumotlari</h3>
+        </div>
+      </div>
+      <div style="font-size:13px; color:var(--text-secondary); line-height:1.8;">
+        <div>Do'kon: <b>Kech Harbiy Do'kon</b></div>
+        <div>Do'kon kodi: <code>64EB6AB2</code></div>
+        <div>Asosiy Admin: <b>G'iyos (7370403444)</b></div>
+        <div>Holat: <span style="color:#059669; font-weight:600;">Faol 24/7 ✅</span></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================
        BOTTOM NAVIGATION
        ============================================================ -->
   <nav class="bottom-nav" id="bottomNav">
@@ -1593,6 +1737,12 @@
         <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
       </svg>
       Statistika
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="showScreen('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Sozlamalar
     </button>
   </nav>
 
@@ -1631,17 +1781,19 @@
     let currentScreen = 'dashboard';
     let currentFilter = 'all';
     let allCustomers = [];
+    let allCategories = getLocalCache('dh_categories') || [];
+    let adminCardData = getLocalCache('dh_card_data') || null;
     let cachedStats = null;
     let statsPeriod = 'today';
     let statsSelectedDate = getLocalDateString();
     let activeCustomerId = null;
     let shopData = {
-      shopId: '',
-      shopName: "Do'kon Hisobi"
+      shopId: '64EB6AB2',
+      shopName: "Kech Harbiy Do'kon"
     };
 
     const urlParams = new URLSearchParams(window.location.search);
-    shopData.shopId = urlParams.get('shop_id') || tg?.initDataUnsafe?.start_param || getLocalCache('dh_shop_id') || '';
+    shopData.shopId = urlParams.get('shop_id') || tg?.initDataUnsafe?.start_param || getLocalCache('dh_shop_id') || '64EB6AB2';
 
     // ============================================================
     // TEZKOR MAHALLIY KESH (0.01s da yuklanish uchun)
@@ -1662,9 +1814,13 @@
     try {
       const _initStats = getLocalCache('dh_stats');
       const _initCusts = getLocalCache('dh_customers') || [];
+      const _initCats = getLocalCache('dh_categories') || [];
       if (_initStats) {
         cachedStats = _initStats;
         allCustomers = _initCusts;
+      }
+      if (_initCats && _initCats.length) {
+        allCategories = _initCats;
       }
     } catch (e) {}
 
@@ -1700,7 +1856,7 @@
     async function apiRequest(endpoint, method = 'GET', body = null) {
       const headers = {
         'Content-Type': 'application/json',
-        'X-Shop-Id': shopData.shopId || '',
+        'X-Shop-Id': shopData.shopId || '5832B1F2',
         'X-Telegram-User-Id': String(tg?.initDataUnsafe?.user?.id || ''),
         'X-Admin-Name': String(tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || ''),
         'X-Telegram-Init-Data': tg?.initData || ''
@@ -1753,7 +1909,8 @@
         if (name === 'dashboard') loadDashboard();
         if (name === 'customers') loadCustomers();
         if (name === 'stats') loadStats();
-        if (name === 'add') resetForm();
+        if (name === 'settings') loadSettings();
+        if (name === 'add') { resetForm(); updateCategorySelectOptions(); }
       } else if (name === 'customers' && prevScreen === 'detail') {
         renderFilteredCustomers('');
       }
@@ -1766,6 +1923,7 @@
       if (currentScreen === 'dashboard') loadDashboard(true);
       else if (currentScreen === 'customers') loadCustomers(true);
       else if (currentScreen === 'stats') { cachedStats = null; loadStats(statsSelectedDate); }
+      else if (currentScreen === 'settings') loadSettings();
       else if (currentScreen === 'detail' && activeCustomerId) openCustomerDetail(activeCustomerId);
       showToast('Yangilandi', 'success');
     }
@@ -1777,7 +1935,7 @@
       if (!stats) return;
       if (stats.shop_name) {
         shopData.shopName = stats.shop_name;
-        shopData.shopId = stats.shop_id || shopData.shopId || '';
+        shopData.shopId = stats.shop_id || shopData.shopId || '5832B1F2';
         const titleEl = document.getElementById('headerShopTitle');
         if (titleEl) titleEl.textContent = stats.shop_name;
         const idEl = document.getElementById('shopIdText');
@@ -1868,6 +2026,8 @@
         const custs = await apiRequest(`/api/customers`);
         allCustomers = custs;
         setLocalCache('dh_customers', custs);
+        renderCategoryPills();
+        updateCategorySelectOptions();
         renderFilteredCustomers();
       } catch (err) {
         if (!allCustomers || allCustomers.length === 0) {
@@ -1941,6 +2101,10 @@
         if (currentFilter === 'overdue') return (c.overdue_debts || 0) > 0;
         if (currentFilter === 'active') return (c.total_debt || 0) > 0 && !(c.overdue_debts > 0);
         if (currentFilter === 'paid') return (c.total_debt || 0) === 0;
+        if (currentFilter && currentFilter.startsWith('cat:')) {
+          const targetCat = currentFilter.substring(4).toLowerCase();
+          return (c.category || '').toLowerCase() === targetCat;
+        }
         return true;
       });
 
@@ -1972,11 +2136,15 @@
           ? `<span class="badge badge-active"><span class="badge-dot dot-warning"></span> Faol</span>` 
           : `<span class="badge badge-paid"><span class="badge-dot dot-success"></span> Qarz yo'q</span>`;
 
+      const catBadge = c.category 
+        ? `<span class="badge" style="background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; font-size:11px; padding:1px 6px; border-radius:6px; margin-left:6px; font-weight:700; display:inline-flex; align-items:center; gap:2px;">🎖️ ${escHtml(c.category)}</span>` 
+        : '';
+
       return `
         <div class="customer-card" onclick="openCustomerDetail(${c.id})">
           <div class="avatar ${hasOverdue ? 'overdue-avatar' : ''}">${initials}</div>
           <div class="customer-info">
-            <div class="customer-name">${escHtml(c.full_name)}</div>
+            <div class="customer-name" style="display:flex; align-items:center; flex-wrap:wrap;">${escHtml(c.full_name)}${catBadge}</div>
             <div class="customer-meta">
               <span>${escHtml(c.phone || 'Raqam yo\'q')}</span> • ${badge}
             </div>
@@ -2010,6 +2178,7 @@
             <div class="avatar" style="width:68px;height:68px;font-size:24px;margin:0 auto 10px">${initials}</div>
             <h3 style="font-size:20px;font-weight:800">${escHtml(existing.full_name)}</h3>
             <p style="color:var(--text-muted);font-size:14px;margin-top:2px">${escHtml(existing.phone || 'Raqam kiritilmagan')}</p>
+            ${existing.category ? `<div style="display:inline-flex; align-items:center; gap:4px; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; font-size:12px; font-weight:700; padding:3px 10px; border-radius:12px; margin-top:6px;">🎖️ ${escHtml(existing.category)}</div>` : ''}
             ${existing.notes ? `<p style="font-size:12px;color:var(--text-light);margin-top:4px;font-style:italic">"${escHtml(existing.notes)}"</p>` : ''}
             
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-top:16px">
@@ -2081,13 +2250,13 @@
               <div class="debt-header">
                 <div>
                   <div class="debt-desc">${escHtml(d.description)}</div>
-                  <div class="debt-amount-big">${formatMoney(d.amount)}</div>
+                  <div class="debt-amount-big" style="color:var(--primary)">+${formatMoney(d.amount)}</div>
                 </div>
                 ${statusBadge}
               </div>
               <div class="debt-row">
                 <span>Olingan sana:</span>
-                <b>${formatDateLong(d.debt_date)}</b>
+                <b>${formatDateTimeUz(d.created_at || d.debt_date)}</b>
               </div>
               <div class="debt-row">
                 <span>To'lov muddati:</span>
@@ -2096,14 +2265,9 @@
               ${isPaid ? `
                 <div class="debt-row" style="color:var(--primary);margin-top:4px">
                   <span>To'langan sana:</span>
-                  <b>${formatDateLong(d.paid_date)}</b>
+                  <b>${formatDateTimeUz(d.paid_date)}</b>
                 </div>
-              ` : `
-                <button class="btn-pay" onclick="payDebtItem(${d.id})">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  To'landi deb belgilash
-                </button>
-              `}
+              ` : ''}
               ${adminTag}
             </div>`;
         }).join('') : `
@@ -2117,13 +2281,57 @@
             <div class="empty-sub">Barcha qarzlar to'langan</div>
           </div>`;
 
+        // Bugungi hisob-kitob (O'zbekiston / Farg'ona vaqti bo'yicha)
+        const todayStr = getLocalDateString();
+        let todayBorrowed = 0;
+        if (data.today_borrowed !== undefined && data.today_borrowed !== null) {
+          todayBorrowed = Number(data.today_borrowed);
+        } else if (data.debts && data.debts.length) {
+          data.debts.forEach(d => {
+            const dDate = (d.debt_date || d.created_at || '').substring(0, 10);
+            if (dDate === todayStr) todayBorrowed += Number(d.amount || 0);
+          });
+        }
+
+        let todayPaid = 0;
+        if (data.today_paid !== undefined && data.today_paid !== null) {
+          todayPaid = Number(data.today_paid);
+        } else if (data.payments && data.payments.length) {
+          data.payments.forEach(p => {
+            const pDate = (p.paid_at || '').substring(0, 10);
+            if (pDate === todayStr) todayPaid += Number(p.amount || 0);
+          });
+        }
+
+        const todaySummaryHtml = `
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin:20px 0 12px;box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:13px;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:6px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Bugungi hisob-kitob
+              </span>
+              <span style="font-size:11px;font-weight:600;color:var(--primary);background:var(--primary-light);padding:3px 8px;border-radius:12px">Bugun</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:var(--bg-app);padding:10px;border-radius:var(--radius-sm);border:1px solid rgba(16,185,129,0.25)">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600">Bugun olingan qarz</div>
+                <div style="font-size:16px;font-weight:800;color:var(--primary);margin-top:3px">+${formatMoney(todayBorrowed)}</div>
+              </div>
+              <div style="background:var(--bg-app);padding:10px;border-radius:var(--radius-sm);border:1px solid rgba(239,68,68,0.25)">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600">Bugun berilgan to'lov</div>
+                <div style="font-size:16px;font-weight:800;color:var(--danger);margin-top:3px">-${formatMoney(todayPaid)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+
         const paymentsHtml = data.payments && data.payments.length ? `
           <h4 class="section-title" style="margin:24px 0 12px">To'lovlar Tarixi (${data.payments.length})</h4>
           ${data.payments.map(p => `
-            <div class="debt-item-card" style="border-left:4px solid var(--primary)">
+            <div class="debt-item-card" style="border-left:4px solid var(--danger)">
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:16px;font-weight:800;color:var(--primary)">+${formatMoney(p.amount)}</span>
-                <span style="font-size:12px;color:var(--text-muted)">${formatDateLong(p.paid_at)}</span>
+                <span style="font-size:16px;font-weight:800;color:var(--danger)">-${formatMoney(p.amount)}</span>
+                <span style="font-size:12px;color:var(--text-muted)">${formatDateTimeUz(p.paid_at)}</span>
               </div>
               <div style="font-size:13px;color:var(--text-muted);margin-top:4px">
                 Izoh: <b>${escHtml(p.note || 'To\'lov')}</b>
@@ -2143,6 +2351,7 @@
             <div class="avatar" style="width:68px;height:68px;font-size:24px;margin:0 auto 10px">${initials}</div>
             <h3 style="font-size:20px;font-weight:800">${escHtml(data.full_name)}</h3>
             <p style="color:var(--text-muted);font-size:14px;margin-top:2px">${escHtml(data.phone || 'Raqam kiritilmagan')}</p>
+            ${data.category ? `<div style="display:inline-flex; align-items:center; gap:4px; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; font-size:12px; font-weight:700; padding:3px 10px; border-radius:12px; margin-top:6px;">🎖️ ${escHtml(data.category)}</div>` : ''}
             ${data.notes ? `<p style="font-size:12px;color:var(--text-light);margin-top:4px;font-style:italic">"${escHtml(data.notes)}"</p>` : ''}
             
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-top:16px">
@@ -2186,6 +2395,7 @@
           
           <h4 class="section-title" style="margin-bottom:12px">Qarzlar Tarixi (${data.debts?.length || 0})</h4>
           ${debtsHtml}
+          ${todaySummaryHtml}
           ${paymentsHtml}
         `;
       } catch (err) {
@@ -2466,6 +2676,7 @@
 
       clearFieldError('edit-name');
       clearFieldError('edit-phone');
+      updateCategorySelectOptions();
 
       // 1. Keshdan tezkor to'ldirish
       const cust = (allCustomers || []).find(c => c.id === customerId);
@@ -2475,6 +2686,9 @@
         document.getElementById('inp-edit-phone').value = pVal;
         syncPhoneCountryFromValue('inp-edit-phone', pVal);
         document.getElementById('inp-edit-notes').value = cust.notes || '';
+        if (document.getElementById('inp-edit-category')) {
+          document.getElementById('inp-edit-category').value = cust.category || '';
+        }
       }
 
       const modal = document.getElementById('modalEditCustomer');
@@ -2494,6 +2708,9 @@
           document.getElementById('inp-edit-phone').value = pVal;
           syncPhoneCountryFromValue('inp-edit-phone', pVal);
           document.getElementById('inp-edit-notes').value = fullCust.notes || '';
+          if (document.getElementById('inp-edit-category')) {
+            document.getElementById('inp-edit-category').value = fullCust.category || '';
+          }
         }
       } catch (e) {}
     }
@@ -2509,6 +2726,7 @@
       const name = document.getElementById('inp-edit-name').value.trim();
       const phoneRaw = document.getElementById('inp-edit-phone').value.trim();
       const notes = document.getElementById('inp-edit-notes').value.trim();
+      const category = (document.getElementById('inp-edit-category')?.value || '').trim();
 
       let valid = true;
       if (!name || name.length < 2) {
@@ -2535,6 +2753,7 @@
         const payload = {
           full_name: name,
           phone: phoneDigits.length >= 7 ? (phoneRaw.startsWith('+') ? phoneRaw.replace(/\s+/g, '') : '+' + phoneDigits) : null,
+          category: category || null,
           notes: notes || null
         };
         const res = await apiRequest(`/api/customer/${customerId}/edit`, 'POST', payload);
@@ -2545,7 +2764,7 @@
         // Mahalliy keshni yangilash
         allCustomers = (allCustomers || []).map(c => {
           if (c.id === parseInt(customerId)) {
-            return { ...c, full_name: res.customer.full_name, phone: res.customer.phone, notes: res.customer.notes };
+            return { ...c, full_name: res.customer.full_name, phone: res.customer.phone, category: res.customer.category, notes: res.customer.notes };
           }
           return c;
         });
@@ -2867,10 +3086,12 @@
       btn.innerHTML = 'Saqlanmoqda...';
 
       try {
+        const categoryVal = (document.getElementById('inp-category')?.value || '').trim();
         const payload = {
-          shop_id: shopData.shopId || '',
+          shop_id: shopData.shopId || '64EB6AB2',
           full_name: name,
           phone: phoneDigits.length >= 7 ? (phoneRaw.startsWith('+') ? phoneRaw.replace(/\s+/g, '') : '+' + phoneDigits) : null,
+          category: categoryVal || null,
           amount: amount,
           description: desc,
           due_date: date,
@@ -2886,6 +3107,7 @@
           shop_id: payload.shop_id,
           full_name: payload.full_name,
           phone: payload.phone,
+          category: payload.category,
           total_debt: res.total_debt,
           active_debts: 1,
           overdue_debts: 0,
@@ -3253,6 +3475,39 @@
       } catch (e) { return s; }
     }
 
+    function formatDateTimeUz(s) {
+      if (!s) return '—';
+      try {
+        let dateStr = String(s).trim();
+        if (dateStr.length === 10 && dateStr.indexOf('-') === 4) {
+          const parts = dateStr.split('-');
+          return `${parseInt(parts[2], 10)}-${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+        }
+        if (!dateStr.includes('Z') && !dateStr.includes('+') && dateStr.includes(' ')) {
+          dateStr = dateStr.replace(' ', 'T') + 'Z';
+        }
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(s);
+
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Tashkent',
+          day: 'numeric',
+          month: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const map = {};
+        parts.forEach(p => map[p.type] = p.value);
+        const monthIdx = parseInt(map.month, 10) - 1;
+        return `${parseInt(map.day, 10)}-${months[monthIdx]} ${map.year}, ${map.hour}:${map.minute}`;
+      } catch (e) {
+        return formatDateLong(s);
+      }
+    }
+
     function escHtml(s) {
       if (!s) return '';
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -3412,7 +3667,7 @@
       const cachedStatsData = getLocalCache('dh_stats');
       const cachedCustsData = getLocalCache('dh_customers') || [];
 
-      if (paramRole === 'customer') {
+      if (paramRole === 'customer' || (cachedMe && cachedMe.role === 'customer' && !urlParams.has('shop_id'))) {
         if (nav) nav.style.display = 'none';
         document.documentElement.classList.add('is-customer-role');
         if (cachedCustData && cachedCustData.customer) {
@@ -3426,6 +3681,16 @@
           cachedStats = cachedStatsData;
           allCustomers = cachedCustsData;
           renderDashboardCards(cachedStatsData, cachedCustsData);
+        }
+        const cachedCatsData = getLocalCache('dh_categories');
+        if (cachedCatsData && Array.isArray(cachedCatsData)) {
+          allCategories = cachedCatsData;
+          renderCategoryPills();
+          updateCategorySelectOptions();
+        }
+        const cachedCardData = getLocalCache('dh_card_data');
+        if (cachedCardData) {
+          populateCardSettings(cachedCardData);
         }
       }
 
@@ -3474,9 +3739,19 @@
           } else {
             loadCustomers();
           }
+          if (me.categories) {
+            allCategories = me.categories;
+            setLocalCache('dh_categories', me.categories);
+            renderCategoryPills();
+            updateCategorySelectOptions();
+          }
+          if (me.admin) {
+            populateCardSettings(me.admin);
+          }
           renderDashboardCards(cachedStats, allCustomers);
           if (currentScreen === 'customers') renderFilteredCustomers();
           if (currentScreen === 'stats') renderStatsView(cachedStats);
+          if (currentScreen === 'settings') loadSettings();
         }
       } catch (err) {
         console.error('checkAuthAndBoot xatosi:', err);
@@ -3492,6 +3767,319 @@
       } finally {
         hideTopLoader();
       }
+    }
+
+    // ============================================================
+    // SETTINGS & PAYMENT CARD MANAGEMENT
+    // ============================================================
+    function formatCardNumber(num) {
+      if (!num) return '';
+      const clean = String(num).replace(/\D/g, '').slice(0, 16);
+      return clean.replace(/(\d{4})(?=\d)/g, '$1 ');
+    }
+
+    function onCardNumberInput(el) {
+      const formatted = formatCardNumber(el.value);
+      el.value = formatted;
+      updateBankCardDisplay(formatted, null, null);
+    }
+
+    function onCardHolderInput(el) {
+      updateBankCardDisplay(null, el.value, null);
+    }
+
+    function onBankNameInput(el) {
+      updateBankCardDisplay(null, null, el.value);
+    }
+
+    function updateBankCardDisplay(num, holder, bank) {
+      const numEl = document.getElementById('cardNumberDisplay');
+      const holderEl = document.getElementById('cardHolderDisplay');
+      const bankEl = document.getElementById('cardBankDisplay');
+
+      if (num !== null && num !== undefined && numEl) {
+        numEl.textContent = num.trim() ? num : '8600 •••• •••• ••••';
+      }
+      if (holder !== null && holder !== undefined && holderEl) {
+        holderEl.textContent = holder.trim() ? holder.toUpperCase() : "G'IYOS";
+      }
+      if (bank !== null && bank !== undefined && bankEl) {
+        bankEl.textContent = bank.trim() ? bank.toUpperCase() : 'UZCARD / HUMO';
+      }
+    }
+
+    function populateCardSettings(admin) {
+      if (!admin) return;
+      const numInp = document.getElementById('inp-card-number');
+      const holderInp = document.getElementById('inp-card-holder');
+      const bankInp = document.getElementById('inp-bank-name');
+
+      const cardNum = admin.card_number ? formatCardNumber(admin.card_number) : '';
+      const cardHolder = admin.card_holder || '';
+      const bankName = admin.bank_name || '';
+
+      if (numInp) numInp.value = cardNum;
+      if (holderInp) holderInp.value = cardHolder;
+      if (bankInp) bankInp.value = bankName;
+
+      updateBankCardDisplay(cardNum, cardHolder, bankName);
+      setLocalCache('dh_card_data', {
+        card_number: admin.card_number || '',
+        card_holder: admin.card_holder || '',
+        bank_name: admin.bank_name || ''
+      });
+    }
+
+    async function saveCardSettings() {
+      const numRaw = (document.getElementById('inp-card-number')?.value || '').replace(/\s+/g, '');
+      const holder = (document.getElementById('inp-card-holder')?.value || '').trim();
+      const bank = (document.getElementById('inp-bank-name')?.value || '').trim();
+
+      let valid = true;
+      if (!numRaw || numRaw.length < 16) {
+        showFieldError('card-number', '16 xonali karta raqamini to\'liq kiriting');
+        valid = false;
+      } else clearFieldError('card-number');
+
+      if (!holder) {
+        showFieldError('card-holder', 'Karta egasining ismini kiriting');
+        valid = false;
+      } else clearFieldError('card-holder');
+
+      if (!valid) {
+        haptic('notification', 'error');
+        return;
+      }
+
+      showTopLoader();
+      try {
+        const payload = {
+          shop_id: shopData.shopId || '64EB6AB2',
+          card_number: numRaw,
+          card_holder: holder,
+          bank_name: bank
+        };
+        const res = await apiRequest('/api/settings/card', 'POST', payload);
+        haptic('notification', 'success');
+        showToast('Karta ma\'lumotlari muvaffaqiyatli saqlandi!', 'success');
+        populateCardSettings({
+          card_number: numRaw,
+          card_holder: holder,
+          bank_name: bank
+        });
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    async function promptBroadcastCard() {
+      const cardNum = (document.getElementById('inp-card-number')?.value || '').replace(/\s+/g, '');
+      if (!cardNum || cardNum.length < 16) {
+        showToast('Avval karta raqamini kiritib, saqlang!', 'warning');
+        return;
+      }
+
+      const debtorsCount = (allCustomers || []).filter(c => parseFloat(c.total_debt) > 0 && c.phone).length;
+      const countMsg = debtorsCount > 0 ? ` (${debtorsCount} ta mijoz)` : '';
+
+      const ok = confirm(`Do'kondan qarzi bor barcha mijozlarga${countMsg} karta raqamingiz va qarz to'lash havolasini yuborishni tasdiqlaysizmi?`);
+      if (!ok) return;
+
+      showTopLoader();
+      try {
+        const res = await apiRequest('/api/settings/broadcast-card', 'POST', {
+          shop_id: shopData.shopId || '64EB6AB2'
+        });
+        haptic('notification', 'success');
+        const sent = res.sent_count || 0;
+        showToast(`${sent} ta qarzdor mijozga karta ma'lumotlari yuborildi!`, 'success');
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    // ============================================================
+    // CATEGORIES (HARBIY GURUHLAR) MANAGEMENT
+    // ============================================================
+    async function loadCategories(force = false) {
+      if (!force && allCategories && allCategories.length > 0) {
+        renderSettingsCategories();
+        renderCategoryPills();
+        updateCategorySelectOptions();
+        return;
+      }
+      try {
+        const res = await apiRequest(`/api/categories?shop_id=${shopData.shopId || '64EB6AB2'}`);
+        const catsList = Array.isArray(res) ? res : (res?.categories || []);
+        if (catsList && catsList.length >= 0) {
+          allCategories = catsList;
+          setLocalCache('dh_categories', catsList);
+          renderSettingsCategories();
+          renderCategoryPills();
+          updateCategorySelectOptions();
+        }
+      } catch (e) {
+        console.error('Kategoriyalarni yuklashda xatolik:', e);
+      }
+    }
+
+    function renderSettingsCategories() {
+      const container = document.getElementById('settingsCategoriesList');
+      if (!container) return;
+
+      if (!allCategories || allCategories.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:13px; background:var(--bg-app); border-radius:10px; border:1px dashed var(--border);">
+            Hozircha hech qanday harbiy guruh qo'shilmagan. Yuqoridan yangi guruh (masalan: 1-rota) qo'shishingiz mumkin.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = allCategories.map(cat => {
+        const catName = typeof cat === 'string' ? cat : (cat.name || '');
+        const catId = typeof cat === 'object' && cat.id ? cat.id : 0;
+        const countInCat = (allCustomers || []).filter(c => (c.category || '').toLowerCase() === catName.toLowerCase()).length;
+
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px 14px; border:1px solid var(--border); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:15px;">🎖️</span>
+              <span style="font-weight:700; color:var(--text-main); font-size:14px;">${escHtml(catName)}</span>
+              <span style="background:var(--bg-app); color:var(--text-muted); font-size:11px; font-weight:600; padding:2px 7px; border-radius:10px; border:1px solid var(--border);">${countInCat} ta mijoz</span>
+            </div>
+            <button onclick="deleteCategory(${catId}, '${escHtml(catName)}')" style="background:none; border:none; color:var(--danger); cursor:pointer; padding:6px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="O'chirish">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function addNewCategory() {
+      const inp = document.getElementById('inp-new-category');
+      if (!inp) return;
+      const name = inp.value.trim();
+      if (!name) {
+        showToast('Guruh nomini kiriting (masalan: 1-rota)', 'warning');
+        return;
+      }
+
+      showTopLoader();
+      try {
+        const res = await apiRequest('/api/categories/add', 'POST', {
+          shop_id: shopData.shopId || '64EB6AB2',
+          name: name
+        });
+        inp.value = '';
+        haptic('notification', 'success');
+        showToast(`"${name}" guruhi qo'shildi!`, 'success');
+        if (res.categories) {
+          allCategories = res.categories;
+        } else {
+          allCategories.push(res.category || { name: name });
+        }
+        setLocalCache('dh_categories', allCategories);
+        renderSettingsCategories();
+        renderCategoryPills();
+        updateCategorySelectOptions();
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    async function deleteCategory(id, name) {
+      const ok = confirm(`"${name}" guruhini o'chirmoqchimisiz?`);
+      if (!ok) return;
+
+      showTopLoader();
+      try {
+        const endpoint = id ? `/api/categories/${id}/delete` : `/api/categories/0/delete`;
+        const res = await apiRequest(endpoint, 'POST', {
+          shop_id: shopData.shopId || '64EB6AB2',
+          name: name
+        });
+        haptic('notification', 'success');
+        showToast(`"${name}" guruhi o'chirildi!`, 'success');
+        if (res.categories) {
+          allCategories = res.categories;
+        } else {
+          allCategories = allCategories.filter(c => (typeof c === 'string' ? c !== name : c.id !== id && c.name !== name));
+        }
+        setLocalCache('dh_categories', allCategories);
+        renderSettingsCategories();
+        renderCategoryPills();
+        updateCategorySelectOptions();
+        if (currentFilter === 'cat:' + name.toLowerCase()) {
+          setFilter('all', document.querySelector('.filter-pill'));
+        }
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    function renderCategoryPills() {
+      const container = document.getElementById('categoryFilterPills');
+      if (!container) return;
+
+      if (!allCategories || allCategories.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = allCategories.map(cat => {
+        const catName = typeof cat === 'string' ? cat : (cat.name || '');
+        const filterVal = 'cat:' + catName.toLowerCase();
+        const isActive = currentFilter === filterVal;
+        return `
+          <button class="filter-pill ${isActive ? 'active' : ''}" onclick="setCategoryFilter('${escHtml(catName)}', this)">
+            🎖️ ${escHtml(catName)}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function setCategoryFilter(categoryName, btn) {
+      document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      currentFilter = 'cat:' + categoryName.toLowerCase();
+      haptic('impact', 'light');
+      renderFilteredCustomers();
+    }
+
+    function updateCategorySelectOptions() {
+      const selects = [document.getElementById('inp-category'), document.getElementById('inp-edit-category')];
+      selects.forEach(sel => {
+        if (!sel) return;
+        const curVal = sel.value;
+        sel.innerHTML = '<option value="">Guruhsiz (Oddiy)</option>' +
+          (allCategories || []).map(cat => {
+            const catName = typeof cat === 'string' ? cat : (cat.name || '');
+            return `<option value="${escHtml(catName)}">🎖️ ${escHtml(catName)}</option>`;
+          }).join('');
+        if (curVal) sel.value = curVal;
+      });
+    }
+
+    function loadSettings() {
+      const cachedCard = getLocalCache('dh_card_data');
+      if (cachedCard) {
+        populateCardSettings(cachedCard);
+      }
+      renderSettingsCategories();
+      loadCategories();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -3699,6 +4287,20 @@
             <button type="button" class="chip-btn" data-country="other" onclick="setPhoneCountry('inp-edit-phone', 'other', this)">🌐 Boshqa</button>
           </div>
           <div class="field-error" id="err-edit-phone"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Harbiy Bo'linma / Guruh</label>
+          <div class="input-box">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </span>
+            <select class="custom-input" id="inp-edit-category" style="cursor:pointer">
+              <option value="">Guruhsiz (Oddiy)</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group" style="margin-bottom:0">

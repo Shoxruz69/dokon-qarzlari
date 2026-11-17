@@ -23,13 +23,19 @@ from database.queries import (
     update_customer,
     delete_customer,
     resolve_admin_label,
-    create_admin
+    create_admin,
+    get_shop_categories,
+    add_shop_category,
+    delete_shop_category,
+    update_admin_card,
+    get_shop_debtors_for_broadcast
 )
 from utils.validators import validate_phone, validate_amount, validate_date, validate_full_name
 from utils.notifications import (
     notify_customer_partial_payment,
     notify_customer_debt_added,
-    notify_customer_debt_paid
+    notify_customer_debt_paid,
+    notify_customer_card_details
 )
 
 logger = logging.getLogger(__name__)
@@ -172,6 +178,7 @@ async def handle_add_customer(request: web.Request):
     description = data.get("description", "").strip()
     due_date = data.get("due_date", "").strip()
     notes = data.get("notes")
+    category = data.get("category")
 
     # Validatsiyalar
     admin = await get_admin_by_shop_id(shop_id)
@@ -215,7 +222,8 @@ async def handle_add_customer(request: web.Request):
         due_date=date_val,
         notes=notes,
         admin_id=admin_id,
-        admin_name=admin_name_val
+        admin_name=admin_name_val,
+        category=category
     )
     invalidate_api_cache()
     return web.json_response(result)
@@ -393,6 +401,7 @@ async def handle_customer_edit(request: web.Request):
     full_name = data.get("full_name", "").strip()
     phone = data.get("phone", "")
     notes = data.get("notes")
+    category = data.get("category")
 
     is_name_ok, name_val = validate_full_name(full_name)
     if not is_name_ok:
@@ -406,7 +415,7 @@ async def handle_customer_edit(request: web.Request):
         phone_val = valid_phone
 
     try:
-        updated = await update_customer(customer_id, shop_id, name_val, phone_val, notes)
+        updated = await update_customer(customer_id, shop_id, name_val, phone_val, notes, category)
     except ValueError as e:
         return web.json_response({"detail": str(e)}, status=400)
 
@@ -477,12 +486,15 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
             custs_data = results[idx]
             _customers_memory_cache[cache_custs_key] = (now, custs_data)
             
+    categories_data = await get_shop_categories(shop_id)
+
     return {
         "role": "admin",
         "admin": admin,
         "shop_id": shop_id,
         "stats": stats_data,
-        "customers": custs_data
+        "customers": custs_data,
+        "categories": categories_data
     }
 
 async def handle_get_me(request: web.Request):
@@ -600,6 +612,127 @@ async def handle_favicon(request: web.Request):
     """Favicon so'rovini qondirish"""
     return web.Response(text="", content_type="image/x-icon")
 
+# ============================================================
+# KATEGORIYALAR (HARBIY GURUHLAR) VA KARTA SOZLAMALARI
+# ============================================================
+
+async def handle_get_categories(request: web.Request):
+    """GET /api/categories yoki /api/categories/{shop_id}"""
+    shop_id = await resolve_shop_id(request)
+    cats = await get_shop_categories(shop_id)
+    return web.json_response(cats)
+
+async def handle_add_category(request: web.Request):
+    """POST /api/categories/add"""
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({"detail": "Noto'g'ri JSON formati"}, status=400)
+    shop_id = data.get("shop_id") or await resolve_shop_id(request)
+    name = (data.get("name") or "").strip()
+    if not name:
+        return web.json_response({"detail": "Guruh / Kategoriya nomi kiritilmadi"}, status=400)
+    cat = await add_shop_category(shop_id, name)
+    invalidate_api_cache()
+    cats = await get_shop_categories(shop_id)
+    return web.json_response({"ok": True, "success": True, "category": cat, "categories": cats})
+
+async def handle_delete_category(request: web.Request):
+    """POST /api/categories/{id}/delete yoki DELETE /api/categories/{id}"""
+    try:
+        cat_id = int(request.match_info.get("id"))
+    except Exception:
+        return web.json_response({"detail": "Noto'g'ri kategoriya id"}, status=400)
+    shop_id = await resolve_shop_id(request)
+    ok = await delete_shop_category(shop_id, cat_id)
+    invalidate_api_cache()
+    cats = await get_shop_categories(shop_id)
+    return web.json_response({"ok": ok, "success": ok, "categories": cats})
+
+async def handle_save_card_settings(request: web.Request):
+    """POST /api/settings/card - Karta ma'lumotlarini saqlash"""
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({"detail": "Noto'g'ri JSON formati"}, status=400)
+    shop_id = data.get("shop_id") or await resolve_shop_id(request)
+    card_num = (data.get("card_number") or "").strip()
+    card_holder = (data.get("card_holder") or "").strip()
+    bank_name = (data.get("bank_name") or "").strip()
+
+    digits_only = "".join(filter(str.isdigit, card_num))
+    if len(digits_only) < 16:
+        return web.json_response({"detail": "Karta raqami kamida 16 ta raqamdan iborat bo'lishi kerak"}, status=400)
+    if not card_holder:
+        return web.json_response({"detail": "Karta egasining ism-familiyasi kiritilishi shart"}, status=400)
+
+    await update_admin_card(shop_id, card_num, card_holder, bank_name)
+    invalidate_api_cache()
+    admin = await get_admin_by_shop_id(shop_id)
+    return web.json_response({
+        "ok": True,
+        "success": True,
+        "admin": admin,
+        "message": "Karta ma'lumotlari muvaffaqiyatli saqlandi!"
+    })
+
+async def handle_broadcast_card(request: web.Request):
+    """POST /api/settings/broadcast-card - Barcha qarzdorlarga karta raqamini yuborish"""
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    shop_id = data.get("shop_id") or await resolve_shop_id(request)
+    admin = await get_admin_by_shop_id(shop_id)
+    if not admin:
+        return web.json_response({"detail": "Do'kon topilmadi"}, status=404)
+
+    card_num = (data.get("card_number") or admin.get("card_number") or "").strip()
+    card_holder = (data.get("card_holder") or admin.get("card_holder") or "").strip()
+    bank_name = (data.get("bank_name") or admin.get("bank_name") or "").strip()
+    cat_filter = (data.get("category") or "").strip() or None
+
+    digits_only = "".join(filter(str.isdigit, card_num))
+    if len(digits_only) < 16:
+        return web.json_response({"detail": "Avval to'g'ri karta raqamini kiriting va saqlang!"}, status=400)
+    if not card_holder:
+        card_holder = admin.get("full_name") or "Do'kon egasi"
+
+    # Agar so'rovda yangi kelgan bo'lsa, bazaga ham saqlab qo'yamiz
+    await update_admin_card(shop_id, card_num, card_holder, bank_name)
+
+    debtors = await get_shop_debtors_for_broadcast(shop_id, category=cat_filter)
+    sent_count = 0
+    no_tg_count = 0
+
+    shop_title = admin.get("shop_name", "Kech Harbiy Do'kon")
+    for debtor in debtors:
+        if debtor.get("telegram_id"):
+            try:
+                ok = await notify_customer_card_details(
+                    debtor,
+                    shop_name=shop_title,
+                    card_number=card_num,
+                    card_holder=card_holder,
+                    bank_name=bank_name,
+                    shop_id=shop_id
+                )
+                if ok:
+                    sent_count += 1
+            except Exception as e:
+                logger.warning(f"Karta yuborishda xatolik ({debtor.get('id')}): {e}")
+        else:
+            no_tg_count += 1
+
+    return web.json_response({
+        "ok": True,
+        "success": True,
+        "sent_count": sent_count,
+        "total_debtors": len(debtors),
+        "no_telegram_count": no_tg_count,
+        "message": f"✅ {sent_count} ta qarzdor mijozga karta ma'lumotlari Telegram orqali yuborildi!"
+    })
+
 def create_web_app() -> web.Application:
     """Aiohttp veb ilovasini yaratish"""
     app = web.Application(middlewares=[cors_middleware])
@@ -623,6 +756,16 @@ def create_web_app() -> web.Application:
     app.router.add_delete("/api/customer/{customer_id}", handle_customer_delete)
     app.router.add_post("/api/customers/add", handle_add_customer)
     app.router.add_post("/api/debt/{debt_id}/pay", handle_mark_paid)
+    
+    # Kategoriya va Karta sozlamalari
+    app.router.add_get("/api/categories", handle_get_categories)
+    app.router.add_get("/api/categories/", handle_get_categories)
+    app.router.add_get("/api/categories/{shop_id}", handle_get_categories)
+    app.router.add_post("/api/categories/add", handle_add_category)
+    app.router.add_post("/api/categories/{id}/delete", handle_delete_category)
+    app.router.add_delete("/api/categories/{id}", handle_delete_category)
+    app.router.add_post("/api/settings/card", handle_save_card_settings)
+    app.router.add_post("/api/settings/broadcast-card", handle_broadcast_card)
     
     # Static files & Mini App
     app.router.add_get("/", handle_index)

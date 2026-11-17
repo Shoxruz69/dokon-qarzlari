@@ -2,6 +2,7 @@ import uuid
 import logging
 import asyncio
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any
 
 from database.db import (
@@ -22,7 +23,8 @@ logger = logging.getLogger(__name__)
 def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = None) -> str:
     """Admin ID si yoki ismini chiroyli qilib qaytarish"""
     known = {
-        7370403444: "G'iyos"
+        264625389: "Rustamjon",
+        6715367177: "Abdulhamid"
     }
     try:
         aid = int(admin_id) if admin_id else None
@@ -36,8 +38,8 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
         return custom_name.strip()
 
     if aid:
-        return known.get(aid, "G'iyos")
-    return "G'iyos"
+        return known.get(aid, "Rustamjon")
+    return "Rustamjon"
 
 # ============================================================
 # 1. ADMIN SO'ROVLARI
@@ -45,11 +47,6 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
 
 async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     """Adminni telegram_id bo'yicha olish"""
-    try:
-        if int(telegram_id) == 6876312568:
-            return None
-    except Exception:
-        pass
     admin = await db_fetch_one(
         "SELECT * FROM admins WHERE telegram_id = ? AND is_active = TRUE",
         telegram_id
@@ -58,43 +55,34 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
         return admin
 
+    # Agar bazada bu telegram_id bo'lmasa, lekin settings.is_admin_id() bo'lsa
+    if settings.is_admin_id(telegram_id):
+        first = await get_first_active_admin()
+        if first:
+            res = dict(first)
+            res["telegram_id"] = telegram_id
+            res["full_name"] = resolve_admin_label(telegram_id)
+            return res
+            
     return None
 
 async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
     """Adminni shop_id bo'yicha olish"""
-    # 1. To'g'ridan-to'g'ri shop_id bo'yicha
-    admin = await db_fetch_one(
+    return await db_fetch_one(
         "SELECT * FROM admins WHERE shop_id = ? AND is_active = TRUE",
         shop_id
     )
-    if admin:
-        return admin
-
-    # 2. Agar 64EB6AB2 yoki F3055FC8 so'ralsa -> G'iyos do'koni
-    if shop_id in ("64EB6AB2", "F3055FC8"):
-        admin = await db_fetch_one(
-            "SELECT * FROM admins WHERE telegram_id = 7370403444 AND is_active = TRUE"
-        )
-        if admin:
-            return admin
-
-    # 3. Fallback: har qanday holatda faol adminni qaytarish (404 xatosi bo'lmasligi uchun)
-    first = await get_first_active_admin()
-    if first:
-        return first
-
-    return None
 
 async def get_first_active_admin() -> Optional[dict]:
     """Tizimdagi birinchi faol adminni olish (fallback)"""
     return await db_fetch_one(
-        "SELECT * FROM admins WHERE is_active = TRUE AND shop_id != '5832B1F2' AND shop_name != 'Veral Market' ORDER BY id ASC LIMIT 1"
+        "SELECT * FROM admins WHERE is_active = TRUE ORDER BY id ASC LIMIT 1"
     )
 
 async def create_admin(telegram_id: int, full_name: str, 
                        shop_name: str, username: str = None, phone: str = None) -> dict:
     """Yangi admin yaratish"""
-    shop_id = "64EB6AB2" if telegram_id == 7370403444 else str(uuid.uuid4())[:8].upper()
+    shop_id = str(uuid.uuid4())[:8].upper()
     await db_execute("""
         INSERT INTO admins (telegram_id, username, full_name, shop_name, shop_id, phone, is_active)
         VALUES (?, ?, ?, ?, ?, ?, TRUE)
@@ -102,7 +90,6 @@ async def create_admin(telegram_id: int, full_name: str,
             username = EXCLUDED.username,
             full_name = EXCLUDED.full_name,
             shop_name = EXCLUDED.shop_name,
-            shop_id = CASE WHEN admins.telegram_id = 7370403444 THEN '64EB6AB2' ELSE EXCLUDED.shop_id END,
             phone = COALESCE(EXCLUDED.phone, admins.phone),
             is_active = TRUE
     """, telegram_id, username, full_name.strip(), shop_name.strip(), shop_id, phone)
@@ -120,18 +107,18 @@ async def update_admin_shop_name(telegram_id: int, shop_name: str) -> bool:
 async def update_admin_profile(telegram_id: int, full_name: str, shop_name: str, phone: str = None) -> dict:
     """Admin to'liq ma'lumotlarini yangilash yoki yaratish"""
     existing = await db_fetch_one("SELECT * FROM admins WHERE telegram_id = ?", telegram_id)
-    target_shop_id = "64EB6AB2" if telegram_id == 7370403444 else str(uuid.uuid4())[:8].upper()
     if existing:
         await db_execute("""
             UPDATE admins 
-            SET full_name = ?, shop_name = ?, shop_id = ?, phone = COALESCE(?, phone), is_active = TRUE
+            SET full_name = ?, shop_name = ?, phone = COALESCE(?, phone), is_active = TRUE
             WHERE telegram_id = ?
-        """, full_name.strip(), shop_name.strip(), target_shop_id if telegram_id == 7370403444 else existing["shop_id"], phone, telegram_id)
+        """, full_name.strip(), shop_name.strip(), phone, telegram_id)
     else:
+        shop_id = str(uuid.uuid4())[:8].upper()
         await db_execute("""
             INSERT INTO admins (telegram_id, full_name, shop_name, shop_id, phone, is_active)
             VALUES (?, ?, ?, ?, ?, TRUE)
-        """, telegram_id, full_name.strip(), shop_name.strip(), target_shop_id, phone)
+        """, telegram_id, full_name.strip(), shop_name.strip(), shop_id, phone)
         
     return await get_admin_by_telegram_id(telegram_id)
 
@@ -155,7 +142,8 @@ async def add_customer(
     notes: Optional[str] = None,
     debt_date: Optional[str] = None,
     admin_id: Optional[int] = None,
-    admin_name: Optional[str] = None
+    admin_name: Optional[str] = None,
+    category: Optional[str] = None
 ) -> dict:
     """Mijoz va uning dastlabki qarzini kiritish"""
     d_date = date.fromisoformat(debt_date) if debt_date else date.today()
@@ -164,6 +152,7 @@ async def add_customer(
 
     clean_phone = phone.strip() if phone and str(phone).strip() else None
     desc_val = description.strip() if description and str(description).strip() else "Nasiya savdo"
+    clean_cat = category.strip() if category and str(category).strip() else None
 
     # 1. Mijoz bor-yo'qligini tekshirish
     customer = None
@@ -182,23 +171,26 @@ async def add_customer(
     if not customer:
         new_total = float(amount)
         customer_id = await db_execute_insert("""
-            INSERT INTO customers (shop_id, full_name, phone, telegram_id, notes, total_debt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, shop_id, full_name.strip(), clean_phone, telegram_id, notes, new_total)
+            INSERT INTO customers (shop_id, full_name, phone, telegram_id, notes, total_debt, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, shop_id, full_name.strip(), clean_phone, telegram_id, notes, new_total, clean_cat)
         is_new = True
     else:
         customer_id = customer["id"]
         new_total = round(float(customer.get("total_debt") or 0.0) + float(amount), 2)
+        if clean_cat:
+            await db_execute("UPDATE customers SET category = ? WHERE id = ?", clean_cat, customer_id)
         if telegram_id:
             await db_execute("UPDATE customers SET telegram_id = ?, total_debt = ? WHERE id = ?", telegram_id, new_total, customer_id)
         else:
             await db_execute("UPDATE customers SET total_debt = ? WHERE id = ?", new_total, customer_id)
 
-    # 2. Qarzni kiritish (qaysi admin qo'shgani bilan)
+    # 2. Qarzni kiritish (qaysi admin qo'shgani bilan va O'zbekiston/Farg'ona vaqti bilan)
+    now_dt = datetime.now(ZoneInfo("Asia/Tashkent"))
     debt_id = await db_execute_insert("""
-        INSERT INTO debts (customer_id, shop_id, amount, description, debt_date, due_date, status, created_by_admin_id, created_by_admin_name)
-        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
-    """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, admin_id, resolved_name)
+        INSERT INTO debts (customer_id, shop_id, amount, description, debt_date, due_date, status, created_by_admin_id, created_by_admin_name, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+    """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, admin_id, resolved_name, now_dt, now_dt)
 
     return {
         "customer_id": customer_id,
@@ -272,6 +264,21 @@ async def get_customer_detail(customer_id: int, shop_id: Optional[str] = None) -
     cust_dict = dict(cust)
     cust_dict["debts"] = debts
     cust_dict["payments"] = payments
+
+    # Bugungi hisob-kitob (O'zbekiston / Toshkent vaqti bo'yicha)
+    today_uz = datetime.now(ZoneInfo("Asia/Tashkent")).date().isoformat()
+    today_borrowed = sum(
+        float(d.get("amount") or 0) 
+        for d in debts 
+        if str(d.get("debt_date") or d.get("created_at") or "")[:10] == today_uz
+    )
+    today_paid = sum(
+        float(p.get("amount") or 0) 
+        for p in payments 
+        if str(p.get("paid_at") or "")[:10] == today_uz
+    )
+    cust_dict["today_borrowed"] = today_borrowed
+    cust_dict["today_paid"] = today_paid
     return cust_dict
 
 async def get_customer_payments(customer_id: int) -> List[dict]:
@@ -290,12 +297,14 @@ async def update_customer(
     shop_id: str,
     full_name: str,
     phone: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
+    category: Optional[str] = None
 ) -> Optional[dict]:
-    """Mijoz ma'lumotlarini (ism, telefon, izoh) yangilash"""
+    """Mijoz ma'lumotlarini (ism, telefon, izoh, kategoriya) yangilash"""
     clean_name = full_name.strip()
     clean_phone = phone.strip() if phone and str(phone).strip() else None
     clean_notes = notes.strip() if notes and str(notes).strip() else None
+    clean_cat = category.strip() if category and str(category).strip() else None
 
     # Do'konga tegishli ekanini tekshirish
     cust = await db_fetch_one("SELECT * FROM customers WHERE id = ? AND shop_id = ?", customer_id, shop_id)
@@ -313,9 +322,9 @@ async def update_customer(
 
     await db_execute("""
         UPDATE customers 
-        SET full_name = ?, phone = ?, notes = ?
+        SET full_name = ?, phone = ?, notes = ?, category = ?
         WHERE id = ? AND shop_id = ?
-    """, clean_name, clean_phone, clean_notes, customer_id, shop_id)
+    """, clean_name, clean_phone, clean_notes, clean_cat, customer_id, shop_id)
 
     return await db_fetch_one("SELECT * FROM customers WHERE id = ?", customer_id)
 
@@ -356,12 +365,12 @@ async def get_all_customers_by_phone(phone: str) -> List[dict]:
     """, phone)
 
 async def get_customer_by_telegram_id(telegram_id: int) -> List[dict]:
-    """Mijozning telegram_id si orqali olish (Veral Market mutlaqo chiqarilmaydi)"""
+    """Mijozning telegram_id si orqali olish"""
     return await db_fetch_all("""
         SELECT c.*, a.shop_name, a.phone as shop_phone
         FROM customers c
         JOIN admins a ON a.shop_id = c.shop_id
-        WHERE c.telegram_id = ? AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
+        WHERE c.telegram_id = ?
     """, telegram_id)
 
 async def link_customer_telegram(phone: str, telegram_id: int) -> bool:
@@ -387,7 +396,7 @@ async def mark_debt_paid(debt_id: int, shop_id: Optional[str] = None,
 
     customer_id = debt["customer_id"]
     amount = float(debt["amount"])
-    now_dt = datetime.now()
+    now_dt = datetime.now(ZoneInfo("Asia/Tashkent"))
     resolved_name = resolve_admin_label(admin_id, admin_name)
 
     # 1. Qarzni paid ga o'tkazish
@@ -425,12 +434,12 @@ async def mark_debt_paid(debt_id: int, shop_id: Optional[str] = None,
     }
 
 async def get_customer_all_debts(customer_id: int) -> List[dict]:
-    """Mijozning barcha qarzlari (Veral Market chiqarilmaydi)"""
+    """Mijozning barcha qarzlari (faol va to'langan)"""
     return await db_fetch_all("""
         SELECT d.*, a.shop_name, a.phone as shop_phone
         FROM debts d
         JOIN admins a ON a.shop_id = d.shop_id
-        WHERE d.customer_id = ? AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
+        WHERE d.customer_id = ?
         ORDER BY CASE d.status 
                    WHEN 'overdue' THEN 1 
                    WHEN 'active' THEN 2 
@@ -439,12 +448,12 @@ async def get_customer_all_debts(customer_id: int) -> List[dict]:
     """, customer_id)
 
 async def get_customer_active_debts(customer_id: int) -> List[dict]:
-    """Mijozning to'lanmagan qarzlari (Veral Market chiqarilmaydi)"""
+    """Mijozning to'lanmagan qarzlari"""
     return await db_fetch_all("""
         SELECT d.*, a.shop_name, a.phone as shop_phone
         FROM debts d
         JOIN admins a ON a.shop_id = d.shop_id
-        WHERE d.customer_id = ? AND d.status != 'paid' AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
+        WHERE d.customer_id = ? AND d.status != 'paid'
         ORDER BY CASE d.status WHEN 'overdue' THEN 1 ELSE 2 END, d.due_date ASC
     """, customer_id)
 
@@ -746,7 +755,7 @@ async def record_customer_payment(
 
     actual_pay = min(pay_amount, total_debt)
     remaining_to_deduct = actual_pay
-    now_dt = datetime.now()
+    now_dt = datetime.now(ZoneInfo("Asia/Tashkent"))
     default_note = note or "Qisman to'lov"
     resolved_name = resolve_admin_label(admin_id, admin_name)
 
@@ -825,11 +834,12 @@ async def add_debt_to_existing_customer(
     resolved_name = resolve_admin_label(admin_id, admin_name)
     desc_val = description.strip() if description and str(description).strip() else "Nasiya savdo"
 
+    now_dt = datetime.now(ZoneInfo("Asia/Tashkent"))
     new_total = round(float(cust.get("total_debt") or 0.0) + float(amount), 2)
     debt_id = await db_execute_insert("""
-        INSERT INTO debts (customer_id, shop_id, amount, description, debt_date, due_date, status, admin_note, created_by_admin_id, created_by_admin_name)
-        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
-    """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, notes, admin_id, resolved_name)
+        INSERT INTO debts (customer_id, shop_id, amount, description, debt_date, due_date, status, admin_note, created_by_admin_id, created_by_admin_name, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+    """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, notes, admin_id, resolved_name, now_dt, now_dt)
 
     await db_execute("UPDATE customers SET total_debt = ? WHERE id = ?", new_total, customer_id)
 
@@ -845,3 +855,72 @@ async def add_debt_to_existing_customer(
         "total_debt": new_total,
         "created_by_admin_name": resolved_name
     }
+
+# ============================================================
+# 8. KARTA SOZLAMALARI VA HARBIY GURUHLAR (KATEGORIYALAR)
+# ============================================================
+
+async def update_admin_card(shop_id: str, card_number: str, card_holder: str, bank_name: str = "") -> bool:
+    """Adminning to'lov kartasi ma'lumotlarini saqlash"""
+    clean_num = card_number.strip().replace(" ", "")
+    clean_holder = card_holder.strip()
+    clean_bank = bank_name.strip()
+    await db_execute(
+        "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ?",
+        clean_num, clean_holder, clean_bank, shop_id
+    )
+    return True
+
+async def get_shop_categories(shop_id: str) -> List[dict]:
+    """Do'konga tegishli barcha harbiy guruhlar/kategoriyalarni mijozlar soni bilan olish"""
+    return await db_fetch_all(
+        """
+        SELECT cat.id, cat.shop_id, cat.name, cat.created_at,
+               COUNT(c.id) as customer_count
+        FROM categories cat
+        LEFT JOIN customers c ON c.shop_id = cat.shop_id AND c.category = cat.name
+        WHERE cat.shop_id = ?
+        GROUP BY cat.id, cat.shop_id, cat.name, cat.created_at
+        ORDER BY cat.name ASC
+        """,
+        shop_id
+    )
+
+async def add_shop_category(shop_id: str, name: str) -> Optional[dict]:
+    """Yangi kategoriya / harbiy guruh qo'shish"""
+    clean_name = name.strip()
+    if not clean_name:
+        return None
+    existing = await db_fetch_one(
+        "SELECT * FROM categories WHERE shop_id = ? AND name = ?",
+        shop_id, clean_name
+    )
+    if existing:
+        return existing
+    await db_execute("INSERT INTO categories (shop_id, name) VALUES (?, ?)", shop_id, clean_name)
+    return await db_fetch_one(
+        "SELECT * FROM categories WHERE shop_id = ? AND name = ?",
+        shop_id, clean_name
+    )
+
+async def delete_shop_category(shop_id: str, category_id: int) -> bool:
+    """Kategoriyani o'chirish"""
+    cat = await db_fetch_one("SELECT * FROM categories WHERE id = ? AND shop_id = ?", category_id, shop_id)
+    if cat:
+        await db_execute("UPDATE customers SET category = NULL WHERE shop_id = ? AND category = ?", shop_id, cat["name"])
+        await db_execute("DELETE FROM categories WHERE id = ? AND shop_id = ?", category_id, shop_id)
+        return True
+    return False
+
+async def get_shop_debtors_for_broadcast(shop_id: str, category: Optional[str] = None) -> List[dict]:
+    """To'lov kartasini yuborish uchun qarzi bor mijozlarni olish"""
+    query = """
+        SELECT id, full_name, phone, telegram_id, total_debt, category 
+        FROM customers 
+        WHERE shop_id = ? AND total_debt > 0
+    """
+    params = [shop_id]
+    if category and str(category).strip():
+        query += " AND category = ?"
+        params.append(category.strip())
+    return await db_fetch_all(query, *params)

@@ -197,6 +197,14 @@ async def init_db():
                     admin_id BIGINT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    shop_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(shop_id, name)
+                );
+                
                 CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
                 CREATE INDEX IF NOT EXISTS idx_debts_customer ON debts(customer_id);
@@ -209,6 +217,18 @@ async def init_db():
                 ALTER TABLE debts ADD COLUMN IF NOT EXISTS created_by_admin_id BIGINT;
                 ALTER TABLE debts ADD COLUMN IF NOT EXISTS created_by_admin_name TEXT;
                 ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS admin_name TEXT;
+                ALTER TABLE admins ADD COLUMN IF NOT EXISTS card_number TEXT;
+                ALTER TABLE admins ADD COLUMN IF NOT EXISTS card_holder TEXT;
+                ALTER TABLE admins ADD COLUMN IF NOT EXISTS bank_name TEXT;
+                ALTER TABLE customers ADD COLUMN IF NOT EXISTS category TEXT;
+
+                CREATE TABLE IF NOT EXISTS categories (
+                    id SERIAL PRIMARY KEY,
+                    shop_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(shop_id, name)
+                );
             """)
             try:
                 await conn.execute("DELETE FROM admins WHERE telegram_id = 6876312568;")
@@ -291,6 +311,14 @@ async def init_db():
                     FOREIGN KEY (debt_id) REFERENCES debts(id)
                 );
                 
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    shop_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(shop_id, name)
+                );
+                
                 CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
                 CREATE INDEX IF NOT EXISTS idx_debts_customer ON debts(customer_id);
@@ -308,6 +336,22 @@ async def init_db():
                 pass
             try:
                 await db.execute("ALTER TABLE payment_history ADD COLUMN admin_name TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE admins ADD COLUMN card_number TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE admins ADD COLUMN card_holder TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE admins ADD COLUMN bank_name TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE customers ADD COLUMN category TEXT;")
             except Exception:
                 pass
             try:
