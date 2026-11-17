@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = None) -> str:
     """Admin ID si yoki ismini chiroyli qilib qaytarish"""
     known = {
+        6876312568: "Shoxruz",
+        7370403444: "G'iyos",
         264625389: "Rustamjon",
         6715367177: "Abdulhamid"
     }
@@ -53,14 +55,20 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     )
     if admin:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
-        if telegram_id == 7370403444 or settings.is_admin_id(telegram_id):
+        if telegram_id in (6876312568, 7370403444) or settings.is_admin_id(telegram_id):
             admin["shop_id"] = "64EB6AB2"
             admin["shop_name"] = "Kech Harbiy Do'kon"
+            if not admin.get("card_number"):
+                shop_card = await db_fetch_one("SELECT card_number, card_holder, bank_name FROM admins WHERE shop_id = '64EB6AB2' AND card_number IS NOT NULL LIMIT 1")
+                if shop_card:
+                    admin["card_number"] = shop_card["card_number"]
+                    admin["card_holder"] = shop_card["card_holder"]
+                    admin["bank_name"] = shop_card["bank_name"]
         return admin
 
     # Agar bazada bu telegram_id bo'lmasa, lekin settings.is_admin_id() bo'lsa
     if settings.is_admin_id(telegram_id):
-        first = await get_first_active_admin()
+        first = await db_fetch_one("SELECT * FROM admins WHERE shop_id = '64EB6AB2' AND is_active = TRUE") or await get_first_active_admin()
         if first:
             res = dict(first)
             res["telegram_id"] = telegram_id
@@ -75,7 +83,7 @@ async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
     """Adminni shop_id bo'yicha olish"""
     if shop_id in ("64EB6AB2", "F3055FC8"):
         admin = await db_fetch_one(
-            "SELECT * FROM admins WHERE (shop_id = ? OR telegram_id = 7370403444) AND is_active = TRUE",
+            "SELECT * FROM admins WHERE (shop_id = ? OR telegram_id IN (6876312568, 7370403444)) AND is_active = TRUE",
             shop_id
         )
         if admin:
@@ -96,7 +104,12 @@ async def get_first_active_admin() -> Optional[dict]:
 async def create_admin(telegram_id: int, full_name: str, 
                        shop_name: str, username: str = None, phone: str = None) -> dict:
     """Yangi admin yaratish"""
-    shop_id = "64EB6AB2" if (telegram_id == 7370403444 or settings.is_admin_id(telegram_id)) else str(uuid.uuid4())[:8].upper()
+    existing_64 = await db_fetch_one("SELECT id, telegram_id FROM admins WHERE shop_id = '64EB6AB2'")
+    if not existing_64 or (existing_64 and existing_64["telegram_id"] == telegram_id):
+        shop_id = "64EB6AB2"
+    else:
+        shop_id = str(uuid.uuid4())[:8].upper()
+
     await db_execute("""
         INSERT INTO admins (telegram_id, username, full_name, shop_name, shop_id, phone, is_active)
         VALUES (?, ?, ?, ?, ?, ?, TRUE)
@@ -104,7 +117,6 @@ async def create_admin(telegram_id: int, full_name: str,
             username = EXCLUDED.username,
             full_name = EXCLUDED.full_name,
             shop_name = EXCLUDED.shop_name,
-            shop_id = CASE WHEN admins.telegram_id = 7370403444 THEN '64EB6AB2' ELSE admins.shop_id END,
             phone = COALESCE(EXCLUDED.phone, admins.phone),
             is_active = TRUE
     """, telegram_id, username, full_name.strip(), shop_name.strip(), shop_id, phone)

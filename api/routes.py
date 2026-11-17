@@ -448,7 +448,7 @@ async def handle_customer_delete(request: web.Request):
 
 async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
     """Admin uchun barcha boshlang'ich ma'lumotlarni (stats + customers) bir so'rovda parallel yig'ish (0.01s javob)"""
-    if admin.get("telegram_id") == 7370403444 or shop_id in ("64EB6AB2", "F3055FC8") or not shop_id:
+    if admin.get("telegram_id") in (6876312568, 7370403444) or settings.is_admin_id(admin.get("telegram_id")) or shop_id in ("64EB6AB2", "F3055FC8") or not shop_id:
         shop_id = "64EB6AB2"
         admin["shop_id"] = "64EB6AB2"
         admin["shop_name"] = "Kech Harbiy Do'kon"
@@ -523,19 +523,15 @@ async def handle_get_me(request: web.Request):
     if user_id_str and user_id_str.isdigit():
         uid = int(user_id_str)
         
-        # 6876312568 admin emas, har qanday holatda faqat mijoz
-        if uid == 6876312568:
-            admin = None
-        else:
-            # Admin tekshiruvi: Faqat settings.is_admin_id(uid) bo'lgan yagona admin (7370403444)
-            admin = await get_admin_by_telegram_id(uid) if (settings.is_admin_id(uid) and uid != 6876312568) else None
-            if not admin and settings.is_admin_id(uid) and uid != 6876312568:
-                # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
-                admin_name = resolve_admin_label(uid)
-                admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
+        # Admin tekshiruvi: settings.is_admin_id(uid)
+        admin = await get_admin_by_telegram_id(uid) if settings.is_admin_id(uid) else None
+        if not admin and settings.is_admin_id(uid):
+            # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
+            admin_name = resolve_admin_label(uid)
+            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
 
         if admin:
-            bootstrap = await _get_admin_bootstrap_data(admin, admin["shop_id"])
+            bootstrap = await _get_admin_bootstrap_data(admin, admin.get("shop_id") or "64EB6AB2")
             return web.json_response(bootstrap)
 
         # Admindan boshqa har qanday foydalanuvchi — FAQAT MIJOZ!

@@ -10,17 +10,17 @@ from database.queries import (
     get_customer_by_telegram_id,
     get_customer_by_id,
     get_admin_by_shop_id,
-    record_customer_payment
+    record_customer_payment,
+    resolve_admin_label
 )
 from keyboards.customer_kb import get_phone_request_kb
 from utils.formatters import esc
 from api.routes import invalidate_api_cache
+from config import settings
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-ADMIN_MAIN_ID = 7370403444
 
 def format_sum(amount: float) -> str:
     return f"{int(amount):,} so'm".replace(",", " ")
@@ -36,8 +36,8 @@ async def handle_customer_receipt_photo(message: Message, bot: Bot):
             return
 
     user_id = message.from_user.id
-    # Asosiy admin o'ziga o'zi chek yubormaydi
-    if user_id == ADMIN_MAIN_ID:
+    # Adminlar o'ziga o'zi chek yubormaydi
+    if settings.is_admin_id(user_id):
         return
 
     customers = await get_customer_by_telegram_id(user_id)
@@ -113,30 +113,28 @@ async def handle_customer_receipt_photo(message: Message, bot: Bot):
         ]
     )
 
-    # Adminni topish
-    admin = await get_admin_by_shop_id(shop_id)
-    admin_tg_id = (admin.get("telegram_id") if admin else None) or ADMIN_MAIN_ID
-
-    try:
-        if is_photo:
-            await bot.send_photo(
-                chat_id=admin_tg_id,
-                photo=file_id,
-                caption=admin_caption,
-                parse_mode="HTML",
-                reply_markup=admin_keyboard
-            )
-        else:
-            await bot.send_document(
-                chat_id=admin_tg_id,
-                document=file_id,
-                caption=admin_caption,
-                parse_mode="HTML",
-                reply_markup=admin_keyboard
-            )
-        logger.info(f"To'lov cheki admin {admin_tg_id} ga yuborildi (Mijoz: {cust_name})")
-    except Exception as e:
-        logger.error(f"Adminga chek yuborishda xatolik: {e}")
+    # Adminlarga yuborish
+    for admin_tg_id in settings.get_admin_ids():
+        try:
+            if is_photo:
+                await bot.send_photo(
+                    chat_id=admin_tg_id,
+                    photo=file_id,
+                    caption=admin_caption,
+                    parse_mode="HTML",
+                    reply_markup=admin_keyboard
+                )
+            else:
+                await bot.send_document(
+                    chat_id=admin_tg_id,
+                    document=file_id,
+                    caption=admin_caption,
+                    parse_mode="HTML",
+                    reply_markup=admin_keyboard
+                )
+            logger.info(f"To'lov cheki admin {admin_tg_id} ga yuborildi (Mijoz: {cust_name})")
+        except Exception as e:
+            logger.error(f"Adminga ({admin_tg_id}) chek yuborishda xatolik: {e}")
 
 
 @router.callback_query(F.data.startswith("chk_appr:"))
@@ -168,6 +166,7 @@ async def on_admin_approve_receipt(callback: CallbackQuery, bot: Bot):
             pass
         return
 
+    admin_name = resolve_admin_label(callback.from_user.id)
     try:
         # Qarzni to'liq o'chirish
         res = await record_customer_payment(
@@ -176,7 +175,7 @@ async def on_admin_approve_receipt(callback: CallbackQuery, bot: Bot):
             pay_amount=current_debt,
             admin_id=callback.from_user.id,
             note="Telegram orqali to'lov cheki tasdiqlandi",
-            admin_name="G'iyos"
+            admin_name=admin_name
         )
         invalidate_api_cache()
     except Exception as e:
@@ -197,7 +196,7 @@ async def on_admin_approve_receipt(callback: CallbackQuery, bot: Bot):
         f"💰 <b>O'chirilgan qarz:</b> {paid_str}\n"
         f"💳 <b>Qolgan qarz:</b> {rem_str}\n"
         f"🕒 <b>Tasdiqlangan vaqt:</b> {tashkent_now}\n"
-        f"👨‍💼 <b>Admin:</b> G'iyos\n"
+        f"👨‍💼 <b>Admin:</b> {esc(admin_name)}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "✅ <i>Qarzdorlik bazadan muvaffaqiyatli o'chirildi!</i>"
     )
@@ -240,6 +239,7 @@ async def on_admin_reject_receipt(callback: CallbackQuery, bot: Bot):
     cust_id = int(parts[1])
     cust = await get_customer_by_id(cust_id)
     tashkent_now = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%d.%m.%Y %H:%M")
+    admin_name = resolve_admin_label(callback.from_user.id)
 
     new_caption = (
         "🧾 <b>TO'LOV CHEKI BEKOR QILINDI!</b> ❌\n"
@@ -247,7 +247,7 @@ async def on_admin_reject_receipt(callback: CallbackQuery, bot: Bot):
         f"👤 <b>Mijoz:</b> {esc(cust.get('full_name', 'Mijoz') if cust else 'Mijoz')}\n"
         f"📱 <b>Tel:</b> <code>{esc(cust.get('phone', '') if cust else '')}</code>\n"
         f"🕒 <b>Rad etilgan vaqt:</b> {tashkent_now}\n"
-        f"👨‍💼 <b>Admin:</b> G'iyos\n"
+        f"👨‍💼 <b>Admin:</b> {esc(admin_name)}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "❌ <i>Chek rad etildi, mijoz qarzi o'zgarishsiz qoldirildi.</i>"
     )

@@ -156,12 +156,19 @@ async def run_tests():
     assert isinstance(me_json["customers"], list)
     print("✅ REST API: /api/me all-in-one bootstrap muvaffaqiyatli javob berdi!")
 
-    # 6876312568 foydalanuvchi faqat mijoz bo'lishini tekshirish
+    # 6876312568 foydalanuvchi to'laqonli admin bo'lishini tekshirish
     res_6876 = await client.get("/api/me?user_id=6876312568")
     assert res_6876.status == 200
     me_6876 = await res_6876.json()
-    assert me_6876["role"] == "customer", f"Xato: 6876312568 admin bo'lib qoldi: {me_6876}"
-    print("✅ REST API: 6876312568 faqat customer bo'lishi tasdiqlandi!")
+    assert me_6876["role"] == "admin", f"Xato: 6876312568 admin bo'lmadi: {me_6876}"
+    print("✅ REST API: 6876312568 admin huquqiga ega ekanligi tasdiqlandi!")
+
+    # Begona mijoz faqat customer bo'lishini tekshirish
+    res_guest = await client.get("/api/me?user_id=999888777")
+    assert res_guest.status == 200
+    me_guest = await res_guest.json()
+    assert me_guest["role"] == "customer", f"Xato: Begona foydalanuvchi mijoz bo'lmadi: {me_guest}"
+    print("✅ REST API: Begona foydalanuvchi faqat customer bo'lishi tasdiqlandi!")
 
     # To'g'ridan-to'g'ri havoladan kirilganda (/api/me paramsiz) -> ADMIN BO'LIMI!
     res_direct = await client.get("/api/me")

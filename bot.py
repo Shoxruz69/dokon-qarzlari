@@ -116,30 +116,19 @@ async def setup_bot_commands(bot: Bot):
             )
         )
 
-        # 2. Faqat Asosiy Admin (G'iyos - 7370403444) uchun Do'kon Paneli
-        admin_url = "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.1"
-        try:
-            await bot.set_chat_menu_button(
-                chat_id=7370403444,
-                menu_button=MenuButtonWebApp(
-                    text="Do'kon Paneli",
-                    web_app=WebAppInfo(url=admin_url)
+        # 2. Asosiy Adminlar (6876312568 va 7370403444) uchun Do'kon Paneli
+        admin_url = "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.6"
+        for aid in settings.get_admin_ids():
+            try:
+                await bot.set_chat_menu_button(
+                    chat_id=aid,
+                    menu_button=MenuButtonWebApp(
+                        text="Do'kon Paneli",
+                        web_app=WebAppInfo(url=admin_url)
+                    )
                 )
-            )
-        except Exception:
-            pass
-
-        # 3. 6876312568 foydalanuvchi uchun ham aniq mijoz menyusi
-        try:
-            await bot.set_chat_menu_button(
-                chat_id=6876312568,
-                menu_button=MenuButtonWebApp(
-                    text="Mening qarzlarim",
-                    web_app=WebAppInfo(url=customer_url)
-                )
-            )
-        except Exception:
-            pass
+            except Exception:
+                pass
 
         logger.info("✅ Bot komandalari va Menu tugmalari (Admin va Mijoz) muvaffaqiyatli o'rnatildi")
     except Exception as e:
