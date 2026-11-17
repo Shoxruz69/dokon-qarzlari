@@ -385,7 +385,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                 
             # SMS yuborish
             text = build_daily_reminder_text(cust, days_overdue=days_overdue)
-            web_app_url = f"{settings.MINI_APP_URL}?role=customer&customer_id={cust['customer_id']}&v=2.3"
+            web_app_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=customer&customer_id={cust['customer_id']}&shop_id=64EB6AB2&v=2.5"
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="📱 Mening qarzlarim (Mini App)", web_app=WebAppInfo(url=web_app_url))]
             ])

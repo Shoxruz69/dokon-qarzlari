@@ -27,11 +27,8 @@ async def show_store_stats(event: Message | CallbackQuery, admin: dict = None):
     stats = await get_admin_stats(admin["shop_id"])
     text = build_admin_stats_text(stats, admin["shop_name"])
     
-    mini_app_url = f"{settings.MINI_APP_URL}?shop_id={admin['shop_id']}"
-    if mini_app_url.lower().startswith("https://"):
-        panel_btn = InlineKeyboardButton(text="🏪 Do'kon Paneli (Mini App)", web_app=WebAppInfo(url=mini_app_url))
-    else:
-        panel_btn = InlineKeyboardButton(text="🏪 Do'kon Paneli (Havola)", url=mini_app_url)
+    mini_app_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.5"
+    panel_btn = InlineKeyboardButton(text="🏪 Do'kon Paneli (Mini App)", web_app=WebAppInfo(url=mini_app_url))
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [panel_btn],

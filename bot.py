@@ -107,7 +107,7 @@ async def setup_bot_commands(bot: Bot):
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
         
         # 1. Barcha mijozlar uchun default pastki menyu
-        customer_url = "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.2"
+        customer_url = "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.5"
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
                 text="Mening qarzlarim",

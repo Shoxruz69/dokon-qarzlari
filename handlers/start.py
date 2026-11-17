@@ -50,7 +50,7 @@ class SecretLogin(StatesGroup):
 
 def get_customer_webapp_kb(customer_id: int) -> InlineKeyboardMarkup:
     """Mijoz uchun o'z qarzlarini ko'rsatuvchi Mini App tugmasi"""
-    url = f"https://dokon-qarzlari-wf96.onrender.com/?role=customer&customer_id={customer_id}&shop_id=64EB6AB2&v=2.2"
+    url = f"https://dokon-qarzlari-wf96.onrender.com/?role=customer&customer_id={customer_id}&shop_id=64EB6AB2&v=2.5"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📱 Mening qarzlarim (Mini App)", web_app=WebAppInfo(url=url))]
     ])
