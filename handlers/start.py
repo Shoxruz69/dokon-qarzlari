@@ -24,7 +24,8 @@ from database.queries import (
     get_customer_by_telegram_id,
     get_all_customers_by_phone,
     link_customer_telegram,
-    get_customer_active_debts
+    get_customer_active_debts,
+    resolve_admin_label
 )
 from keyboards.admin_kb import get_admin_main_inline_kb, get_admin_reply_kb
 from keyboards.customer_kb import get_phone_request_kb, get_customer_main_kb
@@ -118,37 +119,42 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     if not admin:
         admin = await get_admin_by_telegram_id(user_id)
 
-    # Agar foydalanuvchi tizim administratori bo'lsa yoki admin topilsa
-    if is_env_admin or admin:
-        # Agar bazada allaqachon do'kon yaratilgan bo'lsa -> Panelni ochamiz
-        if admin and admin.get("shop_name"):
-            shop_name = admin.get("shop_name", "Do'kon")
-            shop_id = admin.get("shop_id", "")
-            admin_name = admin.get("full_name") or message.from_user.full_name
-            
-            await message.answer(
-                f"Assalomu alaykum, <b>{esc(admin_name)}</b>!\n\n"
-                f"🏪 Do'kon: <b>{esc(shop_name)}</b>\n"
-                f"🆔 Do'kon kodi: <code>{shop_id}</code>\n\n"
-                f"Qarzlarni boshqarish, yangi mijoz kiritish va hisobotlarni ko'rish uchun "
-                f"pastdagi <b>Do'kon Paneli</b> tugmasini bosing:\n\n"
-                f"<i>✏️ Do'kon nomini o'zgartirish uchun: /nomini_ozgartirish</i>",
-                parse_mode="HTML",
-                reply_markup=get_admin_main_inline_kb(shop_id)
-            )
-            await message.answer(
-                "👇 Mini App menyusi faol:",
-                reply_markup=get_admin_reply_kb(shop_id)
-            )
-            return
+    # Agar bazada admin topilmasa, lekin tizim administratori bo'lsa
+    if not admin and is_env_admin:
+        first_admin = await get_first_active_admin()
+        if first_admin and first_admin.get("shop_name"):
+            admin = first_admin
 
-        # Agar admin hali o'z do'konini ochmagan bo'lsa -> Ro'yxatdan o'tishni boshlaymiz
+    # Agar bazada allaqachon do'kon yaratilgan bo'lsa -> HECH QACHON qayta do'kon ochishni so'ramaymiz!
+    if (is_env_admin or admin) and admin and admin.get("shop_name"):
+        shop_name = admin.get("shop_name", "Do'kon")
+        shop_id = admin.get("shop_id", "")
+        admin_name = admin.get("full_name") or resolve_admin_label(user_id)
+        
+        await message.answer(
+            f"Assalomu alaykum, <b>{esc(admin_name)}</b>!\n\n"
+            f"🏪 Do'kon: <b>{esc(shop_name)}</b>\n"
+            f"🆔 Do'kon kodi: <code>{shop_id}</code>\n\n"
+            f"Qarzlarni boshqarish, yangi mijoz kiritish va hisobotlarni ko'rish uchun "
+            f"pastdagi <b>Do'kon Paneli</b> tugmasini bosing:\n\n"
+            f"<i>✏️ Do'kon nomini o'zgartirish uchun: /nomini_ozgartirish</i>",
+            parse_mode="HTML",
+            reply_markup=get_admin_main_inline_kb(shop_id)
+        )
+        await message.answer(
+            "👇 Mini App menyusi faol:",
+            reply_markup=get_admin_reply_kb(shop_id)
+        )
+        return
+
+    # Agar admin hali o'z do'konini ochmagan bo'lsa -> Ro'yxatdan o'tishni boshlaymiz (faqat 1 marta!)
+    if is_env_admin:
         admin_default_name = "G'iyos" if user_id == 7370403444 else (message.from_user.full_name or "G'iyos")
         await message.answer(
             f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
             "✅ Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
             "Barcha boshqaruv huquqlari sizga beriladi.\n\n"
-            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
+            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Kech Harbiy Savdo</i> yoki <i>Fayz Savdo</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
@@ -216,67 +222,33 @@ async def process_shop_name(message: Message, state: FSMContext):
         await message.answer("Do'kon nomi kamida 2 ta harfdan iborat bo'lsin. Iltimos, qaytadan yozing:")
         return
         
-    await state.update_data(shop_name=name)
-    await message.answer(
-        f"Ajoyib! Do'kon nomi: <b>{esc(name)}</b>.\n\n"
-        "Endi do'kon egasi sifatida o'zingizning <b>ism va familiyangizni</b> kiriting (masalan: <i>Azizbek Karimov</i>):",
-        parse_mode="HTML"
-    )
-    await state.set_state(AdminSetup.waiting_for_full_name)
-
-@router.message(AdminSetup.waiting_for_full_name)
-async def process_admin_name(message: Message, state: FSMContext):
-    name = (message.text or "").strip()
-    if len(name) < 2:
-        await message.answer("Iltimos, ism va familiyangizni to'liq kiriting:")
-        return
-        
-    await state.update_data(full_name=name)
-    await message.answer(
-        f"Rahmat, <b>{esc(name)}</b>!\n\n"
-        "Oxirgi qadam — mijozlar siz bilan bog'lanishi uchun <b>telefon raqamingizni</b> yuboring:",
-        parse_mode="HTML",
-        reply_markup=get_phone_request_kb()
-    )
-    await state.set_state(AdminSetup.waiting_for_phone)
-
-@router.message(AdminSetup.waiting_for_phone)
-async def process_admin_phone(message: Message, state: FSMContext):
-    phone = ""
-    if message.contact:
-        phone = message.contact.phone_number
-        if not phone.startswith('+'):
-            phone = '+' + phone
-    elif message.text:
-        is_valid, res = validate_phone(message.text)
-        if not is_valid:
-            await message.answer("Noto'g'ri format. Iltimos, pastdagi tugmani bosing yoki +998901234567 ko'rinishida yozing:")
-            return
-        phone = res
-    else:
-        await message.answer("Iltimos, telefon raqamingizni yuboring.")
-        return
-
-    data = await state.get_data()
-    shop_name = data.get("shop_name", "Do'kon")
-    full_name = data.get("full_name", message.from_user.full_name)
     user_id = message.from_user.id
+    data = await state.get_data()
+    full_name = data.get("full_name") or ("G'iyos" if user_id == 7370403444 else (message.from_user.full_name or "G'iyos"))
     
-    # Bazada adminni saqlaymiz
-    admin = await update_admin_profile(user_id, full_name, shop_name, phone)
+    # Do'konni DARHOL bazada saqlaymiz va doimiy mustahkamlaymiz!
+    admin = await update_admin_profile(user_id, full_name, name, phone=None)
     await state.clear()
     
+    shop_id = admin["shop_id"] if admin else ""
+    shop_title = admin["shop_name"] if admin else name
+    owner_title = admin["full_name"] if admin else full_name
+    
     await message.answer(
-        f"🎉 <b>Do'koningiz muvaffaqiyatli ro'yxatdan o'tdi!</b>\n\n"
-        f"🏪 Do'kon: <b>{esc(admin['shop_name'])}</b>\n"
-        f"👤 Do'kon egasi: <b>{esc(admin['full_name'])}</b>\n"
-        f"📞 Telefon: <code>{esc(admin['phone'])}</code>\n"
-        f"🆔 Do'kon kodi: <code>{admin['shop_id']}</code>\n\n"
-        f"Qarzlarni boshqarish, yangi mijoz kiritish va statistika bilan ishlash uchun pastdagi <b>Do'kon Paneli</b> tugmasini bosing:",
+        f"🎉 <b>Do'koningiz muvaffaqiyatli ochildi va saqlandi!</b>\n\n"
+        f"🏪 Do'kon: <b>{esc(shop_title)}</b>\n"
+        f"👤 Do'kon egasi: <b>{esc(owner_title)}</b>\n"
+        f"🆔 Do'kon kodi: <code>{shop_id}</code>\n\n"
+        f"✅ Endi ushbu do'koningiz doimiy biriktirildi. Qayta /start bossangiz ham qaytadan do'kon ochishni so'ramaydi va to'g'ridan-to'g'ri do'kon panelingiz ochiladi!\n\n"
+        f"Qarzlarni boshqarish, yangi mijoz kiritish va hisobotlarni ko'rish uchun pastdagi <b>Do'kon Paneli</b> tugmasini bosing:\n\n"
+        f"<i>✏️ Do'kon nomini xohlagan payt o'zgartirish uchun: /nomini_ozgartirish</i>",
         parse_mode="HTML",
-        reply_markup=get_admin_main_inline_kb(admin["shop_id"])
+        reply_markup=get_admin_main_inline_kb(shop_id)
     )
     await message.answer(
+        "👇 Mini App menyusi faol:",
+        reply_markup=get_admin_reply_kb(shop_id)
+    )
         "👇 Mini App menyusi faol:",
         reply_markup=get_admin_reply_kb(admin["shop_id"])
     )
