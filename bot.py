@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+import aiohttp
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -115,6 +116,19 @@ async def setup_bot_commands(bot: Bot):
     except Exception as e:
         logger.warning(f"⚠️ Bot komandalarini o'rnatishda xatolik: {e}")
 
+async def keep_alive_task():
+    """Render bepul tarifida server uxlab qolmasligi uchun har 10 daqiqada o'zini ping qilish (24/7 rejim)"""
+    await asyncio.sleep(60)  # Dastlabki 1 daqiqa kutish
+    url = "https://dokon-qarzlari-wf96.onrender.com/"
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                await asyncio.sleep(600)  # Har 10 daqiqada (Renderning 15 daqiqa uyqu chegarasidan oldin)
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+                    logger.info(f"⚡ 24/7 Keep-alive ping muvaffaqiyatli: HTTP {resp.status}")
+            except Exception as e:
+                logger.debug(f"Keep-alive ping: {e}")
+
 async def main():
     logger.info("🚀 'Dokon Hisobi' tizimi ishga tushirilmoqda...")
 
@@ -165,6 +179,7 @@ async def main():
     logger.info("⏰ Kunlik eslatmalar scheduleri faollashtirildi (19:00)")
 
     # 9. Bot pollingni boshlash
+    asyncio.create_task(keep_alive_task())
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("🤖 Bot xabarlarni qabul qilishga tayyor!")
 
