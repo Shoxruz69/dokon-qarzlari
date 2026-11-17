@@ -44,12 +44,64 @@ class AdminEditShop(StatesGroup):
 class CustomerVerification(StatesGroup):
     waiting_for_phone = State()
 
+class SecretLogin(StatesGroup):
+    waiting_for_code = State()
+
 def get_customer_webapp_kb(customer_id: int) -> InlineKeyboardMarkup:
     """Mijoz uchun o'z qarzlarini ko'rsatuvchi Mini App tugmasi"""
     url = f"{settings.MINI_APP_URL}?role=customer&customer_id={customer_id}&v=2.2"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📱 Mening qarzlarim (Mini App)", web_app=WebAppInfo(url=url))]
     ])
+
+@router.message(Command("id"))
+async def cmd_id(message: Message):
+    """Foydalanuvchining o'z Telegram ID sini ko'rsatish"""
+    await message.answer(
+        f"🆔 Sizning Telegram ID: <code>{message.from_user.id}</code>\n"
+        f"👤 Ismingiz: <b>{esc(message.from_user.full_name)}</b>",
+        parse_mode="HTML"
+    )
+
+@router.message(Command("admin"))
+@router.message(Command("login"))
+async def cmd_admin_login(message: Message, state: FSMContext):
+    """Maxfiy kod orqali adminlikni tasdiqlash va do'kon ochish"""
+    args = (message.text or "").split(maxsplit=1)
+    if len(args) > 1:
+        code = args[1].strip()
+        if code == settings.ADMIN_SECRET_CODE:
+            await message.answer(
+                f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
+                "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
+                "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
+                parse_mode="HTML",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            await state.set_state(AdminSetup.waiting_for_shop_name)
+            return
+        else:
+            await message.answer("❌ Noto'g'ri maxfiy kod!")
+            return
+            
+    await message.answer("🔐 Iltimos, administrator maxfiy kodini kiriting (masalan: <code>DOKON2025</code>):", parse_mode="HTML")
+    await state.set_state(SecretLogin.waiting_for_code)
+
+@router.message(SecretLogin.waiting_for_code)
+async def process_secret_code(message: Message, state: FSMContext):
+    code = (message.text or "").strip()
+    if code == settings.ADMIN_SECRET_CODE:
+        await state.clear()
+        await message.answer(
+            f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
+            "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
+            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await state.set_state(AdminSetup.waiting_for_shop_name)
+    else:
+        await message.answer("❌ Noto'g'ri maxfiy kod! Qaytadan urinib ko'ring yoki /start bosing.")
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
@@ -62,19 +114,9 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     if not admin:
         admin = await get_admin_by_telegram_id(user_id)
 
-    # Agar telegram_id bo'yicha topilmasa, lekin tizim egasi bo'lsa yoki bazada mavjud do'kon bo'lsa
-    if not admin and is_env_admin:
-        admin = await get_first_active_admin()
-        if admin and admin.get("telegram_id") != user_id:
-            try:
-                await db_execute("UPDATE admins SET telegram_id = ? WHERE id = ?", user_id, admin["id"])
-                admin["telegram_id"] = user_id
-            except Exception:
-                pass
-
     # Agar foydalanuvchi tizim administratori bo'lsa yoki admin topilsa
     if is_env_admin or admin:
-        # Agar bazada allaqachon do'kon yaratilgan bo'lsa -> HECH QACHON qayta ro'yxatdan o'tishni so'ramaymiz!
+        # Agar bazada allaqachon do'kon yaratilgan bo'lsa -> Panelni ochamiz
         if admin and admin.get("shop_name"):
             shop_name = admin.get("shop_name", "Do'kon")
             shop_id = admin.get("shop_id", "")
@@ -96,12 +138,12 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
             )
             return
 
-        # Faqat bazada umuman do'kon bo'lmagandagina bir marta ro'yxatdan o'tishni boshlaymiz
+        # Agar admin hali o'z do'konini ochmagan bo'lsa -> Ro'yxatdan o'tishni boshlaymiz
         await message.answer(
             f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
-            "Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
+            "✅ Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
             "Barcha boshqaruv huquqlari sizga beriladi.\n\n"
-            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Shox market</i> yoki <i>Baraka Savdo</i>):",
+            "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
