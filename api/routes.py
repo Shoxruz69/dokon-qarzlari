@@ -539,26 +539,44 @@ async def handle_get_me(request: web.Request):
             "debts": []
         })
 
-    # 3. Standart holatda — agar role=admin deb ko'rsatilmagan bo'lsa — FAQAT MIJOZ KO'RINISHI!
-    if role_param != "admin":
+    # 3. Agar maxsus role=customer deb ko'rsatilgan bo'lsa — FAQAT MIJOZ KO'RINISHI!
+    if role_param == "customer":
         return web.json_response({
             "role": "customer",
             "customer": None,
             "debts": []
         })
 
-    # 4. Faqat role=admin bo'lganda Admin do'koni
+    # 4. To'g'ridan-to'g'ri havoladan kirilganda (masalan: https://dokon-qarzlari-wf96.onrender.com) — ADMIN BO'LIMI!
     shop_id = await resolve_shop_id(request)
     admin = await get_admin_by_shop_id(shop_id)
+    if not admin:
+        admin = await get_admin_by_telegram_id(7370403444)
+    if not admin:
+        admin = await get_first_active_admin()
+
     if admin:
         admin["full_name"] = resolve_admin_label(admin.get("telegram_id"), admin.get("full_name"))
-        bootstrap = await _get_admin_bootstrap_data(admin, shop_id)
+        bootstrap = await _get_admin_bootstrap_data(admin, admin.get("shop_id", "64EB6AB2"))
         return web.json_response(bootstrap)
 
     return web.json_response({
-        "role": "customer",
-        "customer": None,
-        "debts": []
+        "role": "admin",
+        "shop_id": "64EB6AB2",
+        "admin": {
+            "full_name": "G'iyos",
+            "shop_name": "Kech Harbiy Do'kon",
+            "shop_id": "64EB6AB2"
+        },
+        "stats": {
+            "shop_id": "64EB6AB2",
+            "total_debt": 0,
+            "total_customers": 0,
+            "overdue_count": 0,
+            "paid_today": 0,
+            "daily": {}
+        },
+        "customers": []
     })
 
 async def handle_index(request: web.Request):

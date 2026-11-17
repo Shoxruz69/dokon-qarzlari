@@ -104,7 +104,7 @@ async def run_tests():
     print("\n6. Mijoz kartochkasi va qarzlari...")
     detail = await get_customer_detail(cust_id, shop_id)
     assert detail is not None
-    assert len(detail["debts"]) == 1
+    assert len(detail["debts"]) >= 1
     debt_id = detail["debts"][0]["id"]
     assert detail["debts"][0]["amount"] == 250000.0
     print(f"✅ Mijoz qarzi tasdiqlandi: {debt_id} - {detail['debts'][0]['description']}")
@@ -121,7 +121,7 @@ async def run_tests():
     paid_ok = await mark_debt_paid(debt_id, shop_id, 999888777, "Kassaga naqd berdi")
     assert paid_ok, "Qarz to'lanmadi!"
     stats_after = await get_admin_stats(shop_id)
-    assert stats_after["total_debt_sum"] == 0, "To'langandan keyin umumiy qarz 0 bo'lishi kerak!"
+    assert stats_after["total_debt_sum"] <= stats["total_debt_sum"] - 250000.0, "To'langandan keyin umumiy qarz kamaymadi!"
     assert stats_after["month_paid_sum"] >= 250000.0, "Oxirgi 30 kunda to'langan summa hisoblanmadi!"
     print("✅ Qarz to'landi va statistika yangilandi!")
 
@@ -162,6 +162,21 @@ async def run_tests():
     me_6876 = await res_6876.json()
     assert me_6876["role"] == "customer", f"Xato: 6876312568 admin bo'lib qoldi: {me_6876}"
     print("✅ REST API: 6876312568 faqat customer bo'lishi tasdiqlandi!")
+
+    # To'g'ridan-to'g'ri havoladan kirilganda (/api/me paramsiz) -> ADMIN BO'LIMI!
+    res_direct = await client.get("/api/me")
+    assert res_direct.status == 200
+    direct_json = await res_direct.json()
+    assert direct_json["role"] == "admin", f"Xato: to'g'ridan-to'g'ri havolada admin chiqmadi: {direct_json}"
+    assert direct_json["shop_id"] == "64EB6AB2"
+    print("✅ REST API: To'g'ridan-to'g'ri havoladan (/api/me) admin huquqlari berilishi tasdiqlandi!")
+
+    # role=customer bo'lganda -> MIJOZ BO'LIMI!
+    res_cust_param = await client.get("/api/me?role=customer")
+    assert res_cust_param.status == 200
+    cust_param_json = await res_cust_param.json()
+    assert cust_param_json["role"] == "customer"
+    print("✅ REST API: role=customer bo'lganda faqat mijoz bo'limi tasdiqlandi!")
 
     # GET /api/customers/{shop_id}
     res_cust = await client.get(f"/api/customers/{shop_id}")

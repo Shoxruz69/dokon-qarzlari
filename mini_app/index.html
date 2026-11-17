@@ -11,8 +11,7 @@
     (function() {
       try {
         var p = new URLSearchParams(window.location.search);
-        var me = JSON.parse(localStorage.getItem('dh_user_me') || 'null');
-        if (p.get('role') === 'customer' || (me && me.role === 'customer' && !p.has('shop_id'))) {
+        if (p.get('role') === 'customer') {
           document.documentElement.classList.add('is-customer-role');
         }
       } catch(e) {}
@@ -3413,7 +3412,7 @@
       const cachedStatsData = getLocalCache('dh_stats');
       const cachedCustsData = getLocalCache('dh_customers') || [];
 
-      if (paramRole === 'customer' || (cachedMe && cachedMe.role === 'customer' && !urlParams.has('shop_id'))) {
+      if (paramRole === 'customer') {
         if (nav) nav.style.display = 'none';
         document.documentElement.classList.add('is-customer-role');
         if (cachedCustData && cachedCustData.customer) {
