@@ -235,12 +235,13 @@ async def init_db():
             except Exception:
                 pass
             try:
+                await conn.execute("DELETE FROM admins WHERE shop_id = '64EB6AB2' AND telegram_id != 7370403444;")
                 await conn.execute("UPDATE admins SET shop_id = '64EB6AB2', shop_name = 'Kech Harbiy Do''kon' WHERE telegram_id = 7370403444;")
                 await conn.execute("UPDATE customers SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
                 await conn.execute("UPDATE debts SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
                 await conn.execute("UPDATE categories SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Postgres admin sync xatosi: {e}")
         logger.info("✅ Supabase / PostgreSQL ma'lumotlar bazasi tayyorlandi")
     else:
         # SQLite
@@ -366,12 +367,13 @@ async def init_db():
             except Exception:
                 pass
             try:
+                await db.execute("DELETE FROM admins WHERE shop_id = '64EB6AB2' AND telegram_id != 7370403444;")
                 await db.execute("UPDATE admins SET shop_id = '64EB6AB2', shop_name = 'Kech Harbiy Do''kon' WHERE telegram_id = 7370403444;")
                 await db.execute("UPDATE customers SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
                 await db.execute("UPDATE debts SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
                 await db.execute("UPDATE categories SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"SQLite admin sync xatosi: {e}")
             await db.commit()
         logger.info("✅ SQLite ma'lumotlar bazasi tayyorlandi")
 
