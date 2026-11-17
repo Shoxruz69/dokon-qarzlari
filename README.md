@@ -44,7 +44,7 @@ Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avt
    - `ADMIN_TELEGRAM_ID` = `6876312568`
    - `ADMIN_SECRET_CODE` = `DOKON2025`
    - `TIMEZONE` = `Asia/Tashkent`
-   - `MINI_APP_URL` = `https://dokon-qarzlari.onrender.com` (Render taqdim etgan bepul havola)
+   - `MINI_APP_URL` = `https://dokon-qarzlari-bot.onrender.com` (Render taqdim etgan bepul havola)
 6. **"Create Web Service"** tugmasini bosing. 2-3 daqiqada bot va Mini App 24/7 rejimda bulutda ishga tushadi!
 
 ---
