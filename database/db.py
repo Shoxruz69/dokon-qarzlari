@@ -234,6 +234,13 @@ async def init_db():
                 await conn.execute("DELETE FROM admins WHERE telegram_id = 6876312568;")
             except Exception:
                 pass
+            try:
+                await conn.execute("UPDATE admins SET shop_id = '64EB6AB2', shop_name = 'Kech Harbiy Do''kon' WHERE telegram_id = 7370403444;")
+                await conn.execute("UPDATE customers SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
+                await conn.execute("UPDATE debts SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
+                await conn.execute("UPDATE categories SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
+            except Exception:
+                pass
         logger.info("✅ Supabase / PostgreSQL ma'lumotlar bazasi tayyorlandi")
     else:
         # SQLite
@@ -356,6 +363,13 @@ async def init_db():
                 pass
             try:
                 await db.execute("DELETE FROM admins WHERE telegram_id = 6876312568;")
+            except Exception:
+                pass
+            try:
+                await db.execute("UPDATE admins SET shop_id = '64EB6AB2', shop_name = 'Kech Harbiy Do''kon' WHERE telegram_id = 7370403444;")
+                await db.execute("UPDATE customers SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
+                await db.execute("UPDATE debts SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
+                await db.execute("UPDATE categories SET shop_id = '64EB6AB2' WHERE shop_id = 'AB6B71AD' OR shop_id = 'F3055FC8';")
             except Exception:
                 pass
             await db.commit()
