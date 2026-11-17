@@ -22,7 +22,8 @@ from database.queries import (
     add_debt_to_existing_customer,
     update_customer,
     delete_customer,
-    resolve_admin_label
+    resolve_admin_label,
+    create_admin
 )
 from utils.validators import validate_phone, validate_amount, validate_date, validate_full_name
 from utils.notifications import (
@@ -72,7 +73,12 @@ async def resolve_shop_id(request: web.Request) -> str:
     # 4. Keshdagi default do'kon kodi (0ms)
     if _cached_default_shop_id:
         return _cached_default_shop_id
-    # 5. Tizimdagi birinchi faol admin do'koni (fallback)
+    # 5. Asosiy admin (G'iyos) do'kon kodi
+    main_admin = await get_admin_by_telegram_id(7370403444)
+    if main_admin and main_admin.get("shop_id"):
+        _cached_default_shop_id = main_admin["shop_id"]
+        return _cached_default_shop_id
+    # 6. Tizimdagi birinchi faol admin do'koni (fallback)
     first_admin = await get_first_active_admin()
     if first_admin:
         _cached_default_shop_id = first_admin["shop_id"]
@@ -506,19 +512,14 @@ async def handle_get_me(request: web.Request):
         uid = int(user_id_str)
         admin = await get_admin_by_telegram_id(uid)
         if not admin and settings.is_admin_id(uid):
-            try:
-                admin = await get_first_active_admin()
-                if admin:
-                    admin = dict(admin)
-                    admin["telegram_id"] = uid
-                    admin["full_name"] = resolve_admin_label(uid)
-            except Exception:
-                pass
-                
+            # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
+            admin_name = resolve_admin_label(uid)
+            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Do'kon")
+
         if admin:
             bootstrap = await _get_admin_bootstrap_data(admin, admin["shop_id"])
             return web.json_response(bootstrap)
-            
+
         custs = await get_customer_by_telegram_id(uid)
         if custs:
             cust = custs[0]
