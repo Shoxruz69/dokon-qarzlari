@@ -617,6 +617,15 @@ async def handle_favicon(request: web.Request):
     """Favicon so'rovini qondirish"""
     return web.Response(text="", content_type="image/x-icon")
 
+async def handle_health(request: web.Request):
+    """GET /health va /api/health - Render 24/7 Keep-Alive va Healthcheck"""
+    return web.json_response({
+        "status": "ok",
+        "service": "dokon-qarzlari",
+        "shop_id": "64EB6AB2",
+        "uptime": time.time()
+    })
+
 # ============================================================
 # KATEGORIYALAR (HARBIY GURUHLAR) VA KARTA SOZLAMALARI
 # ============================================================
@@ -743,6 +752,8 @@ def create_web_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
     
     # API endpoints
+    app.router.add_get("/health", handle_health)
+    app.router.add_get("/api/health", handle_health)
     app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/me", handle_get_me)
     app.router.add_get("/api/auth/me", handle_get_me)

@@ -471,17 +471,20 @@ async def keep_alive_ping():
     """Render Free tier'da server 15 daqiqada uxlab qolmasligi uchun doimiy ping"""
     url = os.getenv("RENDER_EXTERNAL_URL") or settings.MINI_APP_URL
     if url and url.startswith("https://"):
+        base = url.rstrip('/')
         targets = [
-            f"{url.rstrip('/')}/favicon.ico",
-            f"{url.rstrip('/')}/"
+            f"{base}/health",
+            f"{base}/api/health",
+            f"{base}/"
         ]
-        async with aiohttp.ClientSession() as session:
+        headers = {"User-Agent": "DokonHisobi-SchedulerKeepAlive/2.0"}
+        async with aiohttp.ClientSession(headers=headers) as session:
             for target in targets:
                 try:
-                    async with session.get(target, timeout=aiohttp.ClientTimeout(total=8)) as resp:
-                        logger.debug(f"Keep-alive ping ({target}): {resp.status}")
-                except Exception:
-                    pass
+                    async with session.get(target, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        logger.info(f"⚡ Scheduler Keep-alive ping ({target}): HTTP {resp.status}")
+                except Exception as e:
+                    logger.debug(f"Scheduler keep-alive xato: {e}")
 
 def setup_scheduler(bot) -> AsyncIOScheduler:
     """Scheduler yaratish va ishga sozlash"""
@@ -498,11 +501,11 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
         misfire_grace_time=7200
     )
     
-    # Har 5 daqiqada Render Free uxlab qolmasligi uchun keep-alive
+    # Har 3 daqiqada Render Free uxlab qolmasligi uchun keep-alive
     scheduler.add_job(
         keep_alive_ping,
         trigger="interval",
-        minutes=5,
+        minutes=3,
         id="render_keep_alive",
         name="Render Keep Alive Ping",
         replace_existing=True
