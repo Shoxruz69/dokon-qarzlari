@@ -71,13 +71,15 @@ async def cmd_admin_login(message: Message, state: FSMContext):
     if len(args) > 1:
         code = args[1].strip()
         if code == settings.ADMIN_SECRET_CODE:
+            admin_default_name = "G'iyos" if message.from_user.id == 7370403444 else (message.from_user.full_name or "G'iyos")
             await message.answer(
-                f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
+                f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
                 "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
                 "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
                 parse_mode="HTML",
                 reply_markup=ReplyKeyboardRemove()
             )
+            await state.update_data(full_name=admin_default_name)
             await state.set_state(AdminSetup.waiting_for_shop_name)
             return
         else:
@@ -92,13 +94,15 @@ async def process_secret_code(message: Message, state: FSMContext):
     code = (message.text or "").strip()
     if code == settings.ADMIN_SECRET_CODE:
         await state.clear()
+        admin_default_name = "G'iyos" if message.from_user.id == 7370403444 else (message.from_user.full_name or "G'iyos")
         await message.answer(
-            f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
+            f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
             "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
             "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
+        await state.update_data(full_name=admin_default_name)
         await state.set_state(AdminSetup.waiting_for_shop_name)
     else:
         await message.answer("❌ Noto'g'ri maxfiy kod! Qaytadan urinib ko'ring yoki /start bosing.")
@@ -139,14 +143,16 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
             return
 
         # Agar admin hali o'z do'konini ochmagan bo'lsa -> Ro'yxatdan o'tishni boshlaymiz
+        admin_default_name = "G'iyos" if user_id == 7370403444 else (message.from_user.full_name or "G'iyos")
         await message.answer(
-            f"Assalomu alaykum, <b>{esc(message.from_user.full_name)}</b>! 👋\n\n"
+            f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
             "✅ Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
             "Barcha boshqaruv huquqlari sizga beriladi.\n\n"
             "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Fayz Savdo</i> yoki <i>Baraka Market</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
+        await state.update_data(full_name=admin_default_name)
         await state.set_state(AdminSetup.waiting_for_shop_name)
         return
 

@@ -22,8 +22,7 @@ logger = logging.getLogger(__name__)
 def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = None) -> str:
     """Admin ID si yoki ismini chiroyli qilib qaytarish"""
     known = {
-        264625389: "Rustamjon",
-        6715367177: "Abdulhamid"
+        7370403444: "G'iyos"
     }
     try:
         aid = int(admin_id) if admin_id else None
@@ -37,8 +36,8 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
         return custom_name.strip()
 
     if aid:
-        return known.get(aid, "Rustamjon")
-    return "Rustamjon"
+        return known.get(aid, "G'iyos")
+    return "G'iyos"
 
 # ============================================================
 # 1. ADMIN SO'ROVLARI
@@ -54,15 +53,6 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
         return admin
 
-    # Agar bazada bu telegram_id bo'lmasa, lekin settings.is_admin_id() bo'lsa
-    if settings.is_admin_id(telegram_id):
-        first = await get_first_active_admin()
-        if first:
-            res = dict(first)
-            res["telegram_id"] = telegram_id
-            res["full_name"] = resolve_admin_label(telegram_id)
-            return res
-            
     return None
 
 async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:

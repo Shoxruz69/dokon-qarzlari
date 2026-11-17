@@ -41,7 +41,7 @@ Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avt
    - **Plan:** `Free`
 5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limida quyidagilarni kiriting:
    - `BOT_TOKEN` = `Telegram @BotFather dan olingan bot tokeni`
-   - `ADMIN_TELEGRAM_ID` = `6876312568`
+   - `ADMIN_TELEGRAM_ID` = `7370403444`
    - `ADMIN_SECRET_CODE` = `DOKON2025`
    - `TIMEZONE` = `Asia/Tashkent`
    - `MINI_APP_URL` = `https://dokon-qarzlari-bot.onrender.com` (Render taqdim etgan bepul havola)
