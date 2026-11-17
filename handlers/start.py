@@ -249,9 +249,6 @@ async def process_shop_name(message: Message, state: FSMContext):
         "👇 Mini App menyusi faol:",
         reply_markup=get_admin_reply_kb(shop_id)
     )
-        "👇 Mini App menyusi faol:",
-        reply_markup=get_admin_reply_kb(admin["shop_id"])
-    )
 
 # ============================================================
 # DO'KON NOMINI O'ZGARTIRISH BUYRUG'I
