@@ -104,14 +104,14 @@ async def setup_bot_commands(bot: Bot):
     ]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
-        if settings.MINI_APP_URL.lower().startswith("https://"):
-            await bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(
-                    text="Do'kon Paneli",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}?v=2.1")
-                )
+        menu_url = "https://dokon-qarzlari-wf96.onrender.com/?shop_id=64EB6AB2&v=2.1"
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="Do'kon Paneli",
+                web_app=WebAppInfo(url=menu_url)
             )
-        logger.info(f"✅ Bot komandalari va Menu tugmasi muvaffaqiyatli o'rnatildi (URL: {settings.MINI_APP_URL})")
+        )
+        logger.info(f"✅ Bot komandalari va Menu tugmasi muvaffaqiyatli o'rnatildi (URL: {menu_url})")
     except Exception as e:
         logger.warning(f"⚠️ Bot komandalarini o'rnatishda xatolik: {e}")
 

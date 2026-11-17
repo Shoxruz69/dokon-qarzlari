@@ -9,18 +9,14 @@ from config import settings
 
 def get_admin_main_inline_kb(shop_id: str) -> InlineKeyboardMarkup:
     """Admin uchun barcha boshqaruvni ochuvchi Mini App tugmasi"""
-    mini_app_url = f"{settings.MINI_APP_URL}?shop_id={shop_id}&v=2.1"
+    sid = "64EB6AB2" if not shop_id or shop_id == "F3055FC8" else shop_id
+    base_url = "https://dokon-qarzlari-wf96.onrender.com"
+    mini_app_url = f"{base_url}/?shop_id={sid}&v=2.1"
     
-    if mini_app_url.lower().startswith("https://"):
-        panel_btn = InlineKeyboardButton(
-            text="Do'kon Paneli (Mini App)",
-            web_app=WebAppInfo(url=mini_app_url)
-        )
-    else:
-        panel_btn = InlineKeyboardButton(
-            text="Do'kon Paneli (Mini App)",
-            url=mini_app_url
-        )
+    panel_btn = InlineKeyboardButton(
+        text="🏪 Do'kon Paneli (Mini App)",
+        web_app=WebAppInfo(url=mini_app_url)
+    )
     
     return InlineKeyboardMarkup(inline_keyboard=[
         [panel_btn]
@@ -28,12 +24,11 @@ def get_admin_main_inline_kb(shop_id: str) -> InlineKeyboardMarkup:
 
 def get_admin_reply_kb(shop_id: str) -> ReplyKeyboardMarkup:
     """Admin doimiy pastki menyusi — faqat Mini App tugmasi"""
-    mini_app_url = f"{settings.MINI_APP_URL}?shop_id={shop_id}&v=2.1"
+    sid = "64EB6AB2" if not shop_id or shop_id == "F3055FC8" else shop_id
+    base_url = "https://dokon-qarzlari-wf96.onrender.com"
+    mini_app_url = f"{base_url}/?shop_id={sid}&v=2.1"
     
-    if mini_app_url.lower().startswith("https://"):
-        panel_btn = KeyboardButton(text="Do'kon Paneli", web_app=WebAppInfo(url=mini_app_url))
-    else:
-        panel_btn = KeyboardButton(text="Do'kon Paneli")
+    panel_btn = KeyboardButton(text="Do'kon Paneli", web_app=WebAppInfo(url=mini_app_url))
         
     return ReplyKeyboardMarkup(
         keyboard=[
