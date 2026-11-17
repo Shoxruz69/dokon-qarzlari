@@ -6,14 +6,14 @@ for chat_id in [7370403444, 6876312568]:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
-        "text": "🏪 <b>Do'kon Paneli (Mini App)</b> yangilandi va ishga tushdi!\n\nIltimos, pastdagi yangi tugmani bosing:",
+        "text": "🏪 <b>Kech Harbiy Do'kon</b> boshqaruv paneli (kod: <code>64EB6AB2</code>) tayyor!\n\nPastdagi tugmani bosing:",
         "parse_mode": "HTML",
         "reply_markup": {
             "inline_keyboard": [
                 [
                     {
                         "text": "🏪 Do'kon Paneli (Mini App)",
-                        "web_app": {"url": "https://dokon-qarzlari-wf96.onrender.com/?v=2.1"}
+                        "web_app": {"url": "https://dokon-qarzlari-wf96.onrender.com/?shop_id=64EB6AB2&v=2.1"}
                     }
                 ]
             ]

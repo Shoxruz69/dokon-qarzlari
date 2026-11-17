@@ -8,7 +8,7 @@ data = {
         "type": "web_app",
         "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?v=2.1"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?shop_id=64EB6AB2&v=2.1"
         }
     }
 }
