@@ -9,7 +9,7 @@ default_data = {
         "type": "web_app",
         "text": "Mening qarzlarim",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.2"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.5"
         }
     }
 }
