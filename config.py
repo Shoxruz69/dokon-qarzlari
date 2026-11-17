@@ -5,7 +5,7 @@ from typing import Optional, List, Union
 class Settings(BaseSettings):
     BOT_TOKEN: str = "9106358155:AAFkdpl8Yi3wsspZa3CdSpCeYJURlkpodqc"
     ADMIN_TELEGRAM_ID: Union[int, str] = "7370403444"
-    MINI_APP_URL: str = "https://dokon-qarzlari-bot.onrender.com"
+    MINI_APP_URL: str = "https://dokon-qarzlari.onrender.com"
     DATABASE_URL: str = ""
     ADMIN_SECRET_CODE: str = "DOKON2025"
     TIMEZONE: str = "Asia/Tashkent"
