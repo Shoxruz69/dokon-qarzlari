@@ -1,8 +1,8 @@
-# 🏪 Dokon Hisobi — Telegram Bot + Mini App
+# 🏪 Dokon Qarzlari — Telegram Bot + Mini App
 
 Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avtomatik eslatmalar yuborish va mijozlarga o'z qarzlarini ko'rsatish tizimi.
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Shoxruz69/dokon-hisobi)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Shoxruz69/dokon-qarzlari)
 
 ---
 
@@ -22,7 +22,7 @@ Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avt
    - 📞 Do'kon bilan bog'lanish tugmasi.
 
 3. **Avtomatlashtirilgan Kunlik Eslatmalar (Scheduler):**
-   - ⏰ Har kuni soat **09:00** da (Toshkent vaqti bilan) avtomatik ishlaydi.
+   - ⏰ Har kuni soat **19:00** da (Toshkent vaqti bilan) avtomatik ishlaydi.
    - 1 kun oldin to'lov muddati kelgan mijozlarga shaxsiy eslatma yuboriladi.
    - 3 kun oldin oldindan ogohlantirish yuboriladi.
    - To'lov muddati o'tib ketgan qarzlarni avtomatik `overdue` holatiga o'tkazadi.
@@ -33,7 +33,7 @@ Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avt
 
 1. [Render.com](https://render.com) saytiga kiring va akkauntingizga kiring.
 2. Yuqoridagi **"Deploy to Render"** tugmasini bosing yoki **"New +" -> "Web Service"** ni tanlang.
-3. GitHub reponi ulang: `https://github.com/Shoxruz69/dokon-hisobi`
+3. GitHub reponi ulang: `https://github.com/Shoxruz69/dokon-qarzlari`
 4. Sozlamalarni tekshiring:
    - **Environment / Runtime:** `Python 3`
    - **Build Command:** `pip install -r requirements.txt`
@@ -42,9 +42,9 @@ Do'kon egalari (adminlar) uchun mijozlar qarzlarini qulay boshqarish, kunlik avt
 5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limida quyidagilarni kiriting:
    - `BOT_TOKEN` = `Telegram @BotFather dan olingan bot tokeni`
    - `ADMIN_TELEGRAM_ID` = `6876312568`
-   - `ADMIN_SECRET_CODE` = `DOKON2024`
+   - `ADMIN_SECRET_CODE` = `DOKON2025`
    - `TIMEZONE` = `Asia/Tashkent`
-   - `MINI_APP_URL` = `https://dokon-hisobi.onrender.com` (Render taqdim etgan bepul havola)
+   - `MINI_APP_URL` = `https://dokon-qarzlari.onrender.com` (Render taqdim etgan bepul havola)
 6. **"Create Web Service"** tugmasini bosing. 2-3 daqiqada bot va Mini App 24/7 rejimda bulutda ishga tushadi!
 
 ---
