@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: dokon-qarzlari
+    name: dokon-qarzlari-wf96
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
