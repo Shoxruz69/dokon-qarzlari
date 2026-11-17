@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = None) -> str:
     """Admin ID si yoki ismini chiroyli qilib qaytarish"""
     known = {
-        7370403444: "G'iyos"
+        7370403444: "G'iyos",
+        6876312568: "Admin"
     }
     try:
         aid = int(admin_id) if admin_id else None
@@ -65,7 +66,7 @@ async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
 async def get_first_active_admin() -> Optional[dict]:
     """Tizimdagi birinchi faol adminni olish (fallback)"""
     return await db_fetch_one(
-        "SELECT * FROM admins WHERE is_active = TRUE ORDER BY id ASC LIMIT 1"
+        "SELECT * FROM admins WHERE is_active = TRUE AND shop_id != '5832B1F2' AND shop_name != 'Veral Market' ORDER BY id ASC LIMIT 1"
     )
 
 async def create_admin(telegram_id: int, full_name: str, 
@@ -332,12 +333,12 @@ async def get_all_customers_by_phone(phone: str) -> List[dict]:
     """, phone)
 
 async def get_customer_by_telegram_id(telegram_id: int) -> List[dict]:
-    """Mijozning telegram_id si orqali olish"""
+    """Mijozning telegram_id si orqali olish (Veral Market mutlaqo chiqarilmaydi)"""
     return await db_fetch_all("""
         SELECT c.*, a.shop_name, a.phone as shop_phone
         FROM customers c
         JOIN admins a ON a.shop_id = c.shop_id
-        WHERE c.telegram_id = ?
+        WHERE c.telegram_id = ? AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
     """, telegram_id)
 
 async def link_customer_telegram(phone: str, telegram_id: int) -> bool:
@@ -401,12 +402,12 @@ async def mark_debt_paid(debt_id: int, shop_id: Optional[str] = None,
     }
 
 async def get_customer_all_debts(customer_id: int) -> List[dict]:
-    """Mijozning barcha qarzlari (faol va to'langan)"""
+    """Mijozning barcha qarzlari (Veral Market chiqarilmaydi)"""
     return await db_fetch_all("""
         SELECT d.*, a.shop_name, a.phone as shop_phone
         FROM debts d
         JOIN admins a ON a.shop_id = d.shop_id
-        WHERE d.customer_id = ?
+        WHERE d.customer_id = ? AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
         ORDER BY CASE d.status 
                    WHEN 'overdue' THEN 1 
                    WHEN 'active' THEN 2 
@@ -415,12 +416,12 @@ async def get_customer_all_debts(customer_id: int) -> List[dict]:
     """, customer_id)
 
 async def get_customer_active_debts(customer_id: int) -> List[dict]:
-    """Mijozning to'lanmagan qarzlari"""
+    """Mijozning to'lanmagan qarzlari (Veral Market chiqarilmaydi)"""
     return await db_fetch_all("""
         SELECT d.*, a.shop_name, a.phone as shop_phone
         FROM debts d
         JOIN admins a ON a.shop_id = d.shop_id
-        WHERE d.customer_id = ? AND d.status != 'paid'
+        WHERE d.customer_id = ? AND d.status != 'paid' AND a.shop_id != '5832B1F2' AND a.shop_name != 'Veral Market'
         ORDER BY CASE d.status WHEN 'overdue' THEN 1 ELSE 2 END, d.due_date ASC
     """, customer_id)
 

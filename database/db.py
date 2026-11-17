@@ -16,12 +16,17 @@ _pg_pool: Optional[asyncpg.Pool] = None
 def is_postgres() -> bool:
     """PostgreSQL yoki Supabase ishlatilayotganini tekshirish"""
     db_url = getattr(settings, "DATABASE_URL", "")
+    if any(sig in db_url.lower() for sig in ["paurqmioymjjqsollezd", "5832b1f2"]):
+        logger.warning("⛔ BLOKLANDI: Veral Market Supabase bazasi aniqlandi! Yangi bot o'zining mustaqil SQLite bazasida ishlaydi.")
+        return False
     return db_url.startswith("postgresql://") or db_url.startswith("postgres://")
 
 async def get_pg_pool() -> asyncpg.Pool:
     global _pg_pool
     if _pg_pool is None:
         db_url = settings.DATABASE_URL
+        if any(sig in db_url.lower() for sig in ["paurqmioymjjqsollezd", "5832b1f2"]):
+            raise RuntimeError("Veral Market bazasiga ulanish butunlay taqiqlangan!")
         if db_url.startswith("postgres://"):
             db_url = "postgresql://" + db_url[len("postgres://"):]
         _pg_pool = await asyncpg.create_pool(

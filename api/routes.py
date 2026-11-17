@@ -73,14 +73,18 @@ async def resolve_shop_id(request: web.Request) -> str:
     # 4. Keshdagi default do'kon kodi (0ms)
     if _cached_default_shop_id:
         return _cached_default_shop_id
-    # 5. Asosiy admin (G'iyos) do'kon kodi
+    # 5. Asosiy adminlar do'kon kodi
     main_admin = await get_admin_by_telegram_id(7370403444)
-    if main_admin and main_admin.get("shop_id"):
+    if main_admin and main_admin.get("shop_id") and main_admin.get("shop_id") != "5832B1F2":
         _cached_default_shop_id = main_admin["shop_id"]
         return _cached_default_shop_id
-    # 6. Tizimdagi birinchi faol admin do'koni (fallback)
+    second_admin = await get_admin_by_telegram_id(6876312568)
+    if second_admin and second_admin.get("shop_id") and second_admin.get("shop_id") != "5832B1F2":
+        _cached_default_shop_id = second_admin["shop_id"]
+        return _cached_default_shop_id
+    # 6. Tizimdagi birinchi faol admin do'koni (fallback, Veral Market chiqarilmaydi)
     first_admin = await get_first_active_admin()
-    if first_admin:
+    if first_admin and first_admin.get("shop_id") != "5832B1F2":
         _cached_default_shop_id = first_admin["shop_id"]
         return _cached_default_shop_id
     return ""
