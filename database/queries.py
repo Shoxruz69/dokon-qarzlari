@@ -83,12 +83,26 @@ async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
     """Adminni shop_id bo'yicha olish"""
     if shop_id in ("64EB6AB2", "F3055FC8"):
         admin = await db_fetch_one(
-            "SELECT * FROM admins WHERE (shop_id = ? OR telegram_id IN (6876312568, 7370403444)) AND is_active = TRUE",
-            shop_id
+            """
+            SELECT * FROM admins 
+            WHERE (shop_id = ? OR telegram_id IN (6876312568, 7370403444)) AND is_active = TRUE 
+            ORDER BY (CASE WHEN shop_id = ? THEN 0 ELSE 1 END), 
+                     (CASE WHEN card_number IS NOT NULL THEN 0 ELSE 1 END), 
+                     telegram_id ASC
+            """,
+            shop_id, shop_id
         )
         if admin:
             admin["shop_id"] = "64EB6AB2"
             admin["shop_name"] = "Kech Harbiy Do'kon"
+            if not admin.get("card_number"):
+                shop_card = await db_fetch_one(
+                    "SELECT card_number, card_holder, bank_name FROM admins WHERE card_number IS NOT NULL LIMIT 1"
+                )
+                if shop_card:
+                    admin["card_number"] = shop_card["card_number"]
+                    admin["card_holder"] = shop_card["card_holder"]
+                    admin["bank_name"] = shop_card["bank_name"]
             return admin
     return await db_fetch_one(
         "SELECT * FROM admins WHERE shop_id = ? AND is_active = TRUE",
@@ -487,7 +501,7 @@ async def get_customer_active_debts(customer_id: int) -> List[dict]:
 async def update_overdue_statuses() -> int:
     """To'lov muddati 3 kundan oshgan (3 kundan beri to'lamagan) qarzlarni 
     avtomatik 'overdue' holatiga o'tkazish, 3 kundan kam bo'lsa 'active' holatda saqlash"""
-    cutoff = (date.today() - timedelta(days=3)).isoformat()
+    cutoff = date.today() - timedelta(days=3)
     try:
         await db_execute("""
             UPDATE debts 
@@ -892,10 +906,16 @@ async def update_admin_card(shop_id: str, card_number: str, card_holder: str, ba
     clean_num = card_number.strip().replace(" ", "")
     clean_holder = card_holder.strip()
     clean_bank = bank_name.strip()
-    await db_execute(
-        "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ?",
-        clean_num, clean_holder, clean_bank, shop_id
-    )
+    if shop_id in ("64EB6AB2", "F3055FC8"):
+        await db_execute(
+            "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ? OR telegram_id IN (6876312568, 7370403444)",
+            clean_num, clean_holder, clean_bank, shop_id
+        )
+    else:
+        await db_execute(
+            "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ?",
+            clean_num, clean_holder, clean_bank, shop_id
+        )
     return True
 
 async def get_shop_categories(shop_id: str) -> List[dict]:

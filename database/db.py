@@ -198,10 +198,10 @@ async def init_db():
                 );
 
                 CREATE TABLE IF NOT EXISTS categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     shop_id TEXT NOT NULL,
                     name TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(shop_id, name)
                 );
                 
@@ -221,14 +221,6 @@ async def init_db():
                 ALTER TABLE admins ADD COLUMN IF NOT EXISTS card_holder TEXT;
                 ALTER TABLE admins ADD COLUMN IF NOT EXISTS bank_name TEXT;
                 ALTER TABLE customers ADD COLUMN IF NOT EXISTS category TEXT;
-
-                CREATE TABLE IF NOT EXISTS categories (
-                    id SERIAL PRIMARY KEY,
-                    shop_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(shop_id, name)
-                );
             """)
             try:
                 # 1. 64EB6AB2 adminini yaratish yoki yangilash (6876312568)
