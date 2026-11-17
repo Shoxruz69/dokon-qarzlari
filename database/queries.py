@@ -927,15 +927,21 @@ async def delete_shop_category(shop_id: str, category_id: int) -> bool:
         return True
     return False
 
-async def get_shop_debtors_for_broadcast(shop_id: str, category: Optional[str] = None) -> List[dict]:
+async def get_shop_debtors_for_broadcast(shop_id: str, category: Optional[str] = None, customer_id: Optional[int] = None) -> List[dict]:
     """To'lov kartasini yuborish uchun qarzi bor mijozlarni olish"""
     query = """
         SELECT id, full_name, phone, telegram_id, total_debt, category 
         FROM customers 
-        WHERE shop_id = ? AND total_debt > 0
+        WHERE shop_id = ?
     """
     params = [shop_id]
-    if category and str(category).strip():
-        query += " AND category = ?"
-        params.append(category.strip())
+    if customer_id:
+        query += " AND id = ?"
+        params.append(int(customer_id))
+    else:
+        query += " AND total_debt > 0"
+        if category and str(category).strip() and str(category).strip().lower() != "all":
+            query += " AND LOWER(category) = LOWER(?)"
+            params.append(category.strip())
+    query += " ORDER BY id DESC"
     return await db_fetch_all(query, *params)

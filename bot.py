@@ -24,7 +24,8 @@ from handlers import (
     admin_customers_router,
     admin_debts_router,
     admin_stats_router,
-    customer_debts_router
+    customer_debts_router,
+    customer_receipt_router
 )
 from utils.scheduler import setup_scheduler
 from api.routes import create_web_app
@@ -189,7 +190,8 @@ async def main():
         admin_customers_router,
         admin_debts_router,
         admin_stats_router,
-        customer_debts_router
+        customer_debts_router,
+        customer_receipt_router
     )
 
     # 5. Mini App va REST API uchun aiohttp veb serverini ishga tushirish

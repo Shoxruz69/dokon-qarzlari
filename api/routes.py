@@ -706,6 +706,11 @@ async def handle_broadcast_card(request: web.Request):
     bank_name = (data.get("bank_name") or admin.get("bank_name") or "").strip()
     cat_filter = (data.get("category") or "").strip() or None
 
+    cust_id = data.get("customer_id")
+    cat_filter = (data.get("category") or "").strip() or None
+    if cat_filter and cat_filter.lower() == "all":
+        cat_filter = None
+
     digits_only = "".join(filter(str.isdigit, card_num))
     if len(digits_only) < 16:
         return web.json_response({"detail": "Avval to'g'ri karta raqamini kiriting va saqlang!"}, status=400)
@@ -715,7 +720,7 @@ async def handle_broadcast_card(request: web.Request):
     # Agar so'rovda yangi kelgan bo'lsa, bazaga ham saqlab qo'yamiz
     await update_admin_card(shop_id, card_num, card_holder, bank_name)
 
-    debtors = await get_shop_debtors_for_broadcast(shop_id, category=cat_filter)
+    debtors = await get_shop_debtors_for_broadcast(shop_id, category=cat_filter, customer_id=cust_id)
     sent_count = 0
     no_tg_count = 0
 
@@ -738,13 +743,24 @@ async def handle_broadcast_card(request: web.Request):
         else:
             no_tg_count += 1
 
+    if cust_id and debtors:
+        target_name = debtors[0].get("full_name", "Mijoz")
+        if sent_count > 0:
+            custom_msg = f"✅ {target_name} ga karta ma'lumotlari Telegram orqali yuborildi!"
+        else:
+            custom_msg = f"⚠️ {target_name} hali botga /start bosmagan. Karta ma'lumotlari yuborilmadi."
+    elif cat_filter:
+        custom_msg = f"✅ '{cat_filter}' guruhidagi {sent_count} ta qarzdor mijozga karta ma'lumotlari yuborildi!"
+    else:
+        custom_msg = f"✅ {sent_count} ta qarzdor mijozga karta ma'lumotlari Telegram orqali yuborildi!"
+
     return web.json_response({
         "ok": True,
         "success": True,
         "sent_count": sent_count,
         "total_debtors": len(debtors),
         "no_telegram_count": no_tg_count,
-        "message": f"✅ {sent_count} ta qarzdor mijozga karta ma'lumotlari Telegram orqali yuborildi!"
+        "message": custom_msg
     })
 
 def create_web_app() -> web.Application:
