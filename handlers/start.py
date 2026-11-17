@@ -68,14 +68,14 @@ async def cmd_id(message: Message):
 @router.message(Command("login"))
 async def cmd_admin_login(message: Message, state: FSMContext):
     """Maxfiy kod orqali adminlikni tasdiqlash va do'kon ochish"""
-    if not settings.is_admin_id(message.from_user.id) or message.from_user.id == 6876312568:
+    if not settings.is_admin_id(message.from_user.id):
         await message.answer("Sizda administratorlik huquqi yo'q.")
         return
     args = (message.text or "").split(maxsplit=1)
     if len(args) > 1:
         code = args[1].strip()
         if code == settings.ADMIN_SECRET_CODE:
-            admin_default_name = "G'iyos" if message.from_user.id == 7370403444 else (message.from_user.full_name or "G'iyos")
+            admin_default_name = resolve_admin_label(message.from_user.id, message.from_user.full_name)
             await message.answer(
                 f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
                 "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
@@ -98,7 +98,7 @@ async def process_secret_code(message: Message, state: FSMContext):
     code = (message.text or "").strip()
     if code == settings.ADMIN_SECRET_CODE:
         await state.clear()
-        admin_default_name = "G'iyos" if message.from_user.id == 7370403444 else (message.from_user.full_name or "G'iyos")
+        admin_default_name = resolve_admin_label(message.from_user.id, message.from_user.full_name)
         await message.answer(
             f"Assalomu alaykum, <b>{esc(admin_default_name)}</b>! 👋\n\n"
             "✅ Maxfiy kod to'g'ri! Siz <b>Do'kon Administratiori</b> sifatida tasdiqlandingiz.\n\n"
@@ -115,14 +115,9 @@ async def process_secret_code(message: Message, state: FSMContext):
 async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     await state.clear()
     user_id = message.from_user.id
-    
-    if user_id == 6876312568:
-        is_env_admin = False
-        admin = None
-    else:
-        is_env_admin = settings.is_admin_id(user_id)
+    is_env_admin = settings.is_admin_id(user_id)
 
-    # 1. ADMIN TEKSHIRUVI (Faqat va faqat G'iyos - 7370403444 uchun!)
+    # 1. ADMIN TEKSHIRUVI (6876312568 - Shoxruz va 7370403444 - G'iyos)
     if is_env_admin:
         if not admin:
             admin = await get_admin_by_telegram_id(user_id)
@@ -132,7 +127,7 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
         if admin and admin.get("shop_name"):
             shop_name = admin.get("shop_name", "Kech Harbiy Do'kon")
             shop_id = "64EB6AB2"
-            admin_name = admin.get("full_name") or "G'iyos"
+            admin_name = resolve_admin_label(user_id, admin.get("full_name"))
             
             await message.answer(
                 f"Assalomu alaykum, <b>{esc(admin_name)}</b>!\n\n"
@@ -151,15 +146,16 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
             return
 
         # Faqat admin hali do'kon ochmagan bo'lsa (birinchi marta)
+        admin_name = resolve_admin_label(user_id, message.from_user.full_name)
         await message.answer(
-            "Assalomu alaykum, <b>G'iyos</b>! 👋\n\n"
+            f"Assalomu alaykum, <b>{esc(admin_name)}</b>! 👋\n\n"
             "✅ Siz <b>Do'kon Administratiori</b> (do'kon egasi) sifatida tasdiqlandingiz.\n"
             "Barcha boshqaruv huquqlari sizga beriladi.\n\n"
             "🏪 Iltimos, <b>do'koningiz nomini yozing</b> (masalan: <i>Kech Harbiy Savdo</i>):",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
-        await state.update_data(full_name="G'iyos")
+        await state.update_data(full_name=admin_name)
         await state.set_state(AdminSetup.waiting_for_shop_name)
         return
 
@@ -316,12 +312,10 @@ async def cmd_setadmin(message: Message):
         return
         
     new_admin_id = int(parts[1])
-    async with aiosqlite.connect("dokon_hisobi.db") as db:
-        if admin:
-            await db.execute("UPDATE admins SET telegram_id = ? WHERE id = ?", (new_admin_id, admin["id"]))
-        else:
-            await db.execute("UPDATE admins SET telegram_id = ? WHERE is_active = 1", (new_admin_id,))
-        await db.commit()
+    if admin:
+        await db_execute("UPDATE admins SET telegram_id = ? WHERE id = ?", new_admin_id, admin["id"])
+    else:
+        await db_execute("UPDATE admins SET telegram_id = ? WHERE is_active = TRUE", new_admin_id)
         
     await message.answer(
         f"✅ <b>Barcha admin huquqlari yangi Telegram ID ga o'tkazildi:</b> <code>{new_admin_id}</code>\n\n"
@@ -334,6 +328,11 @@ async def cmd_setadmin(message: Message):
 # ============================================================
 @router.message(CustomerVerification.waiting_for_phone)
 async def process_customer_phone(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    if settings.is_admin_id(user_id):
+        await state.clear()
+        return await cmd_start(message, state)
+
     phone = ""
     if message.contact:
         phone = message.contact.phone_number
