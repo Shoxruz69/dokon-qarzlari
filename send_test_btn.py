@@ -2,7 +2,7 @@ import urllib.request
 import json
 
 token = "9106358155:AAFkdpl8Yi3wsspZa3CdSpCeYJURlkpodqc"
-for chat_id in [7370403444, 6876312568]:
+for chat_id in [7370403444]:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,

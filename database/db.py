@@ -210,6 +210,10 @@ async def init_db():
                 ALTER TABLE debts ADD COLUMN IF NOT EXISTS created_by_admin_name TEXT;
                 ALTER TABLE payment_history ADD COLUMN IF NOT EXISTS admin_name TEXT;
             """)
+            try:
+                await conn.execute("DELETE FROM admins WHERE telegram_id = 6876312568;")
+            except Exception:
+                pass
         logger.info("✅ Supabase / PostgreSQL ma'lumotlar bazasi tayyorlandi")
     else:
         # SQLite
@@ -304,6 +308,10 @@ async def init_db():
                 pass
             try:
                 await db.execute("ALTER TABLE payment_history ADD COLUMN admin_name TEXT;")
+            except Exception:
+                pass
+            try:
+                await db.execute("DELETE FROM admins WHERE telegram_id = 6876312568;")
             except Exception:
                 pass
             await db.commit()

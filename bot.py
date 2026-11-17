@@ -128,6 +128,18 @@ async def setup_bot_commands(bot: Bot):
         except Exception:
             pass
 
+        # 3. 6876312568 foydalanuvchi uchun ham aniq mijoz menyusi
+        try:
+            await bot.set_chat_menu_button(
+                chat_id=6876312568,
+                menu_button=MenuButtonWebApp(
+                    text="Mening qarzlarim",
+                    web_app=WebAppInfo(url=customer_url)
+                )
+            )
+        except Exception:
+            pass
+
         logger.info("✅ Bot komandalari va Menu tugmalari (Admin va Mijoz) muvaffaqiyatli o'rnatildi")
     except Exception as e:
         logger.warning(f"⚠️ Bot komandalarini o'rnatishda xatolik: {e}")

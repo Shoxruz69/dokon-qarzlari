@@ -506,12 +506,16 @@ async def handle_get_me(request: web.Request):
     if user_id_str and user_id_str.isdigit():
         uid = int(user_id_str)
         
-        # Admin tekshiruvi: Faqat bazadagi admin yoki settingsdagi admin (7370403444)
-        admin = await get_admin_by_telegram_id(uid)
-        if not admin and settings.is_admin_id(uid):
-            # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
-            admin_name = resolve_admin_label(uid)
-            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
+        # 6876312568 admin emas, har qanday holatda faqat mijoz
+        if uid == 6876312568:
+            admin = None
+        else:
+            # Admin tekshiruvi: Faqat settings.is_admin_id(uid) bo'lgan yagona admin (7370403444)
+            admin = await get_admin_by_telegram_id(uid) if (settings.is_admin_id(uid) and uid != 6876312568) else None
+            if not admin and settings.is_admin_id(uid) and uid != 6876312568:
+                # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
+                admin_name = resolve_admin_label(uid)
+                admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
 
         if admin:
             bootstrap = await _get_admin_bootstrap_data(admin, admin["shop_id"])
@@ -615,6 +619,9 @@ def create_web_app() -> web.Application:
         if js_dir.exists():
             app.router.add_static("/js/", path=js_dir)
         app.router.add_static("/static/", path=mini_app_dir)
+        
+    # SPA fallback: har qanday noma'lum sahifa so'ralganda 404 bermasdan index.html yuklanadi
+    app.router.add_get("/{tail:.*}", handle_index)
         
     return app
 

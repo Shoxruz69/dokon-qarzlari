@@ -64,13 +64,12 @@ async def run_tests():
 
     # 3. Admin yaratish
     print("\n3. Admin yaratish...")
-    import random
-    test_tid = random.randint(100_000_000, 999_999_999)
+    test_tid = 7370403444
     admin_res = await create_admin(
         telegram_id=test_tid,
-        full_name="Sinov Admin",
-        shop_name="Sinov Do'koni",
-        username=f"sinov_{test_tid}",
+        full_name="G'iyos",
+        shop_name="Kech Harbiy Do'koni",
+        username="giyos_test",
         phone="+998901112233"
     )
     shop_id = admin_res["shop_id"]
@@ -156,6 +155,13 @@ async def run_tests():
     assert "daily" in me_json["stats"]
     assert isinstance(me_json["customers"], list)
     print("✅ REST API: /api/me all-in-one bootstrap muvaffaqiyatli javob berdi!")
+
+    # 6876312568 foydalanuvchi faqat mijoz bo'lishini tekshirish
+    res_6876 = await client.get("/api/me?user_id=6876312568")
+    assert res_6876.status == 200
+    me_6876 = await res_6876.json()
+    assert me_6876["role"] == "customer", f"Xato: 6876312568 admin bo'lib qoldi: {me_6876}"
+    print("✅ REST API: 6876312568 faqat customer bo'lishi tasdiqlandi!")
 
     # GET /api/customers/{shop_id}
     res_cust = await client.get(f"/api/customers/{shop_id}")

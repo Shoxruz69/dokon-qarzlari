@@ -45,6 +45,11 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
 
 async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     """Adminni telegram_id bo'yicha olish"""
+    try:
+        if int(telegram_id) == 6876312568:
+            return None
+    except Exception:
+        pass
     admin = await db_fetch_one(
         "SELECT * FROM admins WHERE telegram_id = ? AND is_active = TRUE",
         telegram_id

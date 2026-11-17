@@ -68,6 +68,9 @@ async def cmd_id(message: Message):
 @router.message(Command("login"))
 async def cmd_admin_login(message: Message, state: FSMContext):
     """Maxfiy kod orqali adminlikni tasdiqlash va do'kon ochish"""
+    if not settings.is_admin_id(message.from_user.id) or message.from_user.id == 6876312568:
+        await message.answer("Sizda administratorlik huquqi yo'q.")
+        return
     args = (message.text or "").split(maxsplit=1)
     if len(args) > 1:
         code = args[1].strip()
@@ -113,7 +116,11 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     await state.clear()
     user_id = message.from_user.id
     
-    is_env_admin = settings.is_admin_id(user_id)
+    if user_id == 6876312568:
+        is_env_admin = False
+        admin = None
+    else:
+        is_env_admin = settings.is_admin_id(user_id)
 
     # 1. ADMIN TEKSHIRUVI (Faqat va faqat G'iyos - 7370403444 uchun!)
     if is_env_admin:
