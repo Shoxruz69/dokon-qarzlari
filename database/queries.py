@@ -53,6 +53,9 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     )
     if admin:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
+        if telegram_id == 7370403444 or settings.is_admin_id(telegram_id):
+            admin["shop_id"] = "64EB6AB2"
+            admin["shop_name"] = "Kech Harbiy Do'kon"
         return admin
 
     # Agar bazada bu telegram_id bo'lmasa, lekin settings.is_admin_id() bo'lsa
@@ -62,12 +65,23 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
             res = dict(first)
             res["telegram_id"] = telegram_id
             res["full_name"] = resolve_admin_label(telegram_id)
+            res["shop_id"] = "64EB6AB2"
+            res["shop_name"] = "Kech Harbiy Do'kon"
             return res
             
     return None
 
 async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
     """Adminni shop_id bo'yicha olish"""
+    if shop_id in ("64EB6AB2", "F3055FC8"):
+        admin = await db_fetch_one(
+            "SELECT * FROM admins WHERE (shop_id = ? OR telegram_id = 7370403444) AND is_active = TRUE",
+            shop_id
+        )
+        if admin:
+            admin["shop_id"] = "64EB6AB2"
+            admin["shop_name"] = "Kech Harbiy Do'kon"
+            return admin
     return await db_fetch_one(
         "SELECT * FROM admins WHERE shop_id = ? AND is_active = TRUE",
         shop_id
@@ -82,7 +96,7 @@ async def get_first_active_admin() -> Optional[dict]:
 async def create_admin(telegram_id: int, full_name: str, 
                        shop_name: str, username: str = None, phone: str = None) -> dict:
     """Yangi admin yaratish"""
-    shop_id = str(uuid.uuid4())[:8].upper()
+    shop_id = "64EB6AB2" if (telegram_id == 7370403444 or settings.is_admin_id(telegram_id)) else str(uuid.uuid4())[:8].upper()
     await db_execute("""
         INSERT INTO admins (telegram_id, username, full_name, shop_name, shop_id, phone, is_active)
         VALUES (?, ?, ?, ?, ?, ?, TRUE)
@@ -90,6 +104,7 @@ async def create_admin(telegram_id: int, full_name: str,
             username = EXCLUDED.username,
             full_name = EXCLUDED.full_name,
             shop_name = EXCLUDED.shop_name,
+            shop_id = CASE WHEN admins.telegram_id = 7370403444 THEN '64EB6AB2' ELSE admins.shop_id END,
             phone = COALESCE(EXCLUDED.phone, admins.phone),
             is_active = TRUE
     """, telegram_id, username, full_name.strip(), shop_name.strip(), shop_id, phone)
