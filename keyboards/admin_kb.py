@@ -11,7 +11,7 @@ def get_admin_main_inline_kb(shop_id: str) -> InlineKeyboardMarkup:
     """Admin uchun barcha boshqaruvni ochuvchi Mini App tugmasi"""
     sid = "64EB6AB2" if not shop_id or shop_id == "F3055FC8" else shop_id
     base_url = "https://dokon-qarzlari-wf96.onrender.com"
-    mini_app_url = f"{base_url}/?shop_id={sid}&v=2.1"
+    mini_app_url = f"{base_url}/?role=admin&shop_id={sid}&v=4.0"
     
     panel_btn = InlineKeyboardButton(
         text="🏪 Do'kon Paneli (Mini App)",
@@ -26,7 +26,7 @@ def get_admin_reply_kb(shop_id: str) -> ReplyKeyboardMarkup:
     """Admin doimiy pastki menyusi — faqat Mini App tugmasi"""
     sid = "64EB6AB2" if not shop_id or shop_id == "F3055FC8" else shop_id
     base_url = "https://dokon-qarzlari-wf96.onrender.com"
-    mini_app_url = f"{base_url}/?shop_id={sid}&v=2.1"
+    mini_app_url = f"{base_url}/?role=admin&shop_id={sid}&v=4.0"
     
     panel_btn = KeyboardButton(text="Do'kon Paneli", web_app=WebAppInfo(url=mini_app_url))
         

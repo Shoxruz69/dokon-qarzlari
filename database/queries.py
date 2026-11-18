@@ -49,21 +49,25 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
 
 async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     """Adminni telegram_id bo'yicha olish"""
+    if telegram_id in (7370403444, 6876312568) or settings.is_admin_id(telegram_id):
+        # 64EB6AB2 do'koni uchun yagona umumiy admin ma'lumotlari (ikkala admin ham 100% bir xil holatni ko'radi)
+        shop_admin = await db_fetch_one(
+            "SELECT * FROM admins WHERE shop_id = '64EB6AB2' AND is_active = TRUE LIMIT 1"
+        )
+        if shop_admin:
+            res = dict(shop_admin)
+            res["telegram_id"] = telegram_id
+            res["full_name"] = resolve_admin_label(telegram_id, res.get("full_name"))
+            res["shop_id"] = "64EB6AB2"
+            res["shop_name"] = "Kech Harbiy Do'kon"
+            return res
+
     admin = await db_fetch_one(
         "SELECT * FROM admins WHERE telegram_id = ? AND is_active = TRUE",
         telegram_id
     )
     if admin:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
-        if telegram_id in (7370403444, 6876312568) or settings.is_admin_id(telegram_id):
-            admin["shop_id"] = "64EB6AB2"
-            admin["shop_name"] = "Kech Harbiy Do'kon"
-            if not admin.get("card_number"):
-                shop_card = await db_fetch_one("SELECT card_number, card_holder, bank_name FROM admins WHERE shop_id = '64EB6AB2' AND card_number IS NOT NULL LIMIT 1")
-                if shop_card:
-                    admin["card_number"] = shop_card["card_number"]
-                    admin["card_holder"] = shop_card["card_holder"]
-                    admin["bank_name"] = shop_card["bank_name"]
         return admin
 
     # Agar bazada bu telegram_id bo'lmasa, lekin settings.is_admin_id() bo'lsa

@@ -1856,7 +1856,7 @@
     async function apiRequest(endpoint, method = 'GET', body = null) {
       const headers = {
         'Content-Type': 'application/json',
-        'X-Shop-Id': shopData.shopId || '5832B1F2',
+        'X-Shop-Id': shopData.shopId || '64EB6AB2',
         'X-Telegram-User-Id': String(tg?.initDataUnsafe?.user?.id || ''),
         'X-Admin-Name': String(tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || ''),
         'X-Telegram-Init-Data': tg?.initData || ''
@@ -1935,7 +1935,7 @@
       if (!stats) return;
       if (stats.shop_name) {
         shopData.shopName = stats.shop_name;
-        shopData.shopId = stats.shop_id || shopData.shopId || '5832B1F2';
+        shopData.shopId = stats.shop_id || shopData.shopId || '64EB6AB2';
         const titleEl = document.getElementById('headerShopTitle');
         if (titleEl) titleEl.textContent = stats.shop_name;
         const idEl = document.getElementById('shopIdText');
@@ -3662,6 +3662,13 @@
     // AUTH & ROLE INITIALIZATION
     // ============================================================
     async function checkAuthAndBoot() {
+      // 0. Versiya yangilanganda barcha eski localStorage keshlarini tozalash (ikkala admin ham eng yangi holatni ko'rishi uchun)
+      const APP_VERSION = 'v4.0';
+      if (localStorage.getItem('dh_app_version') !== APP_VERSION) {
+        localStorage.clear();
+        localStorage.setItem('dh_app_version', APP_VERSION);
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       let paramRole = urlParams.get('role');
       const paramCustId = urlParams.get('customer_id');

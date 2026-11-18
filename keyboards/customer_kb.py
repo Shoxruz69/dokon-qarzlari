@@ -20,9 +20,9 @@ def get_phone_request_kb() -> ReplyKeyboardMarkup:
 
 def get_customer_main_kb(customer_id: Optional[int] = None) -> ReplyKeyboardMarkup:
     """Mijoz uchun menyu — faqat o'z qarzlari va do'kon bilan aloqa"""
-    base_url = "https://dokon-qarzlari-wf96.onrender.com/"
+    base_url = "https://dokon-qarzlari-wf96.onrender.com"
     cid_param = f"&customer_id={customer_id}" if customer_id else ""
-    url = f"{base_url}?role=customer{cid_param}&shop_id=64EB6AB2&v=2.5"
+    url = f"{base_url}/?role=customer{cid_param}&shop_id=64EB6AB2&v=4.0"
 
     buttons = [
         [KeyboardButton(text="💳 Mening qarzlarim", web_app=WebAppInfo(url=url))],
@@ -35,9 +35,9 @@ def get_customer_main_kb(customer_id: Optional[int] = None) -> ReplyKeyboardMark
 
 def get_customer_inline_kb(customer_id: Optional[int] = None) -> InlineKeyboardMarkup:
     """Mijoz inline yangilash va shaxsiy hisob tugmasi"""
-    base_url = "https://dokon-qarzlari-wf96.onrender.com/"
+    base_url = "https://dokon-qarzlari-wf96.onrender.com"
     cid_param = f"&customer_id={customer_id}" if customer_id else ""
-    url = f"{base_url}?role=customer{cid_param}&shop_id=64EB6AB2&v=2.5"
+    url = f"{base_url}/?role=customer{cid_param}&shop_id=64EB6AB2&v=4.0"
 
     rows = [
         [InlineKeyboardButton(text="📱 Shaxsiy hisob (Mini App)", web_app=WebAppInfo(url=url))],

@@ -11,7 +11,7 @@ default_data = {
         "type": "web_app",
         "text": "Mening qarzlarim",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=2.5"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=4.0"
         }
     }
 }
@@ -23,14 +23,14 @@ req = urllib.request.Request(
 res = urllib.request.urlopen(req)
 print("Default (Mijozlar) Menu Button:", json.loads(res.read().decode("utf-8")))
 
-# 2. Yagona Admin (G'iyos - 7370403444) uchun maxsus Do'kon Paneli menyusi:
+# 2. Asosiy Admin (G'iyos - 7370403444) uchun maxsus Do'kon Paneli menyusi:
 admin_data = {
     "chat_id": 7370403444,
     "menu_button": {
         "type": "web_app",
         "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.6"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.0"
         }
     }
 }
@@ -49,7 +49,7 @@ admin_data_6876 = {
         "type": "web_app",
         "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=3.8"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.0"
         }
     }
 }

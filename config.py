@@ -2,8 +2,15 @@ import os
 from pydantic_settings import BaseSettings
 from typing import Optional, List, Union
 
+def get_clean_bot_token() -> str:
+    raw = os.getenv("BOT_TOKEN", "").strip()
+    valid_token = "9106358155:AAHNO_Uk3IzBP4sqVdB9dgNJ0mrIPb24yec"
+    if not raw or "AAFkd" in raw or not raw.startswith("9106358155:AAHNO"):
+        return valid_token
+    return raw
+
 class Settings(BaseSettings):
-    BOT_TOKEN: str = os.getenv("BOT_TOKEN", "9106358155:AAHNO_Uk3IzBP4sqVdB9dgNJ0mrIPb24yec")
+    BOT_TOKEN: str = get_clean_bot_token()
     ADMIN_TELEGRAM_ID: Union[int, str] = os.getenv("ADMIN_TELEGRAM_ID", "6876312568,7370403444")
     MINI_APP_URL: str = "https://dokon-qarzlari-wf96.onrender.com"
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_6vTKVPerqcz2@ep-divine-dawn-b3gyv6oc-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
@@ -11,6 +18,11 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Asia/Tashkent"
     WEB_SERVER_HOST: str = "0.0.0.0"
     WEB_SERVER_PORT: int = int(os.getenv("PORT", os.getenv("WEB_SERVER_PORT", 8080)))
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        if not self.BOT_TOKEN or "AAFkd" in self.BOT_TOKEN or not self.BOT_TOKEN.startswith("9106358155:AAHNO"):
+            self.BOT_TOKEN = "9106358155:AAHNO_Uk3IzBP4sqVdB9dgNJ0mrIPb24yec"
 
     def get_admin_ids(self) -> List[int]:
         ids = [7370403444, 6876312568]

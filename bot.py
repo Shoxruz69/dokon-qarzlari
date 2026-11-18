@@ -109,7 +109,7 @@ async def setup_bot_commands(bot: Bot):
         
         base_url = settings.MINI_APP_URL.rstrip('/')
         # 1. Barcha mijozlar uchun default pastki menyu
-        customer_url = f"{base_url}/?role=customer&shop_id=64EB6AB2&v=2.7"
+        customer_url = f"{base_url}/?role=customer&shop_id=64EB6AB2&v=4.0"
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
                 text="Mening qarzlarim",
@@ -118,7 +118,7 @@ async def setup_bot_commands(bot: Bot):
         )
 
         # 2. Asosiy Adminlar (7370403444 va 6876312568) uchun Do'kon Paneli
-        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=3.8"
+        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=4.0"
         for aid in settings.get_admin_ids():
             try:
                 await bot.set_chat_menu_button(
