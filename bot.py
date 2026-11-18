@@ -107,9 +107,9 @@ async def setup_bot_commands(bot: Bot):
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
         
-        base_url = settings.MINI_APP_URL.rstrip('/')
+        base_url = "https://dokon-qarzlari-wf96.onrender.com"
         # 1. Barcha mijozlar uchun default pastki menyu
-        customer_url = f"{base_url}/?role=customer&shop_id=64EB6AB2&v=4.0"
+        customer_url = f"{base_url}/?role=customer&shop_id=64EB6AB2&v=4.2"
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
                 text="Mening qarzlarim",
@@ -118,7 +118,7 @@ async def setup_bot_commands(bot: Bot):
         )
 
         # 2. Asosiy Adminlar (7370403444 va 6876312568) uchun Do'kon Paneli
-        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=4.0"
+        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=4.2"
         for aid in settings.get_admin_ids():
             try:
                 await bot.set_chat_menu_button(

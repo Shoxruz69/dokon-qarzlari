@@ -1339,6 +1339,21 @@
         <div class="stat-label">Bu hafta to'lanishi kerak</div>
       </div>
     </div>
+    <script>
+      (function() {
+        try {
+          var s = JSON.parse(localStorage.getItem('dh_stats') || 'null');
+          if (s) {
+            var f = function(v) { return (v || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm"; };
+            if (s.total_debt_sum !== undefined) document.getElementById('stat-hero-debt').textContent = f(s.total_debt_sum);
+            if (s.overdue_debts !== undefined) document.getElementById('stat-overdue').textContent = (s.overdue_debts || 0) + " ta";
+            if (s.active_debts !== undefined) document.getElementById('stat-active').textContent = (s.active_debts || 0) + " ta";
+            if (s.total_customers !== undefined) document.getElementById('stat-customers').textContent = (s.total_customers || 0) + " ta";
+            if (s.due_this_week !== undefined) document.getElementById('stat-week').textContent = (s.due_this_week || 0) + " ta";
+          }
+        } catch(e) {}
+      })();
+    </script>
 
     <!-- RECENT CUSTOMERS PREVIEW -->
     <div class="section-header">
@@ -3146,15 +3161,23 @@
         showScreen('customers', false);
         renderFilteredCustomers();
 
-        // 4. Keshni fon rejimida tozalash va ma'lumotlarni fonda yangilash (UI qotmaydi!)
-        cachedStats = null;
-        try {
-          localStorage.removeItem('dh_stats');
-          localStorage.removeItem('dh_user_me');
-        } catch(e) {}
+        // 4. Optimistik kesh va statistika: hisoblar darhol yangilanadi (0s kutilmaydi!)
+        if (!cachedStats) {
+          cachedStats = { total_debt_sum: 0, total_customers: 0, overdue_debts: 0, active_debts: 0, due_this_week: 0 };
+        }
+        cachedStats.total_debt_sum = (cachedStats.total_debt_sum || 0) + (amount || 0);
+        cachedStats.active_debts = (cachedStats.active_debts || 0) + 1;
+        if (res.is_new) {
+          cachedStats.total_customers = (cachedStats.total_customers || 0) + 1;
+        }
+        setLocalCache('dh_stats', cachedStats);
+        renderDashboardCards(cachedStats, allCustomers);
 
-        loadCustomers(true);
-        loadDashboard(true);
+        // 5. Fonda jimgina yangilash (UI qotmaydi!)
+        setTimeout(() => {
+          loadCustomers(true);
+          loadDashboard(true);
+        }, 150);
       } catch (err) {
         haptic('notification', 'error');
         showToast(err.message, "error");
@@ -3662,10 +3685,9 @@
     // AUTH & ROLE INITIALIZATION
     // ============================================================
     async function checkAuthAndBoot() {
-      // 0. Versiya yangilanganda barcha eski localStorage keshlarini tozalash (ikkala admin ham eng yangi holatni ko'rishi uchun)
-      const APP_VERSION = 'v4.0';
+      // 0. Versiya yangilanganda kesh versiyasini saqlash (0ms tezkor ochilish uchun keshni aslo o'chirmaymiz!)
+      const APP_VERSION = 'v4.2';
       if (localStorage.getItem('dh_app_version') !== APP_VERSION) {
-        localStorage.clear();
         localStorage.setItem('dh_app_version', APP_VERSION);
       }
 
@@ -3731,6 +3753,13 @@
         if (cachedCardData) {
           populateCardSettings(cachedCardData);
         }
+        // Agar havola orqali mijoz kartochkasiga kirilayotgan bo'lsa, darhol ochamiz!
+        if (paramCustId && paramRole !== 'customer') {
+          const cid = parseInt(paramCustId);
+          if (!isNaN(cid) && cid > 0) {
+            openCustomerDetail(cid);
+          }
+        }
       }
 
       showTopLoader();
@@ -3788,6 +3817,13 @@
             populateCardSettings(me.admin);
           }
           renderDashboardCards(cachedStats, allCustomers);
+          // Agar havola orqali mijoz kartochkasiga kirilgan bo'lsa, uni avtomatik ochamiz!
+          if (paramCustId && me.role !== 'customer') {
+            const cid = parseInt(paramCustId);
+            if (!isNaN(cid) && cid > 0) {
+              await openCustomerDetail(cid);
+            }
+          }
           if (currentScreen === 'customers') renderFilteredCustomers();
           if (currentScreen === 'stats') renderStatsView(cachedStats);
           if (currentScreen === 'settings') loadSettings();

@@ -11,7 +11,7 @@ default_data = {
         "type": "web_app",
         "text": "Mening qarzlarim",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=4.0"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=4.2"
         }
     }
 }
@@ -30,7 +30,7 @@ admin_data = {
         "type": "web_app",
         "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.0"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.2"
         }
     }
 }
@@ -49,7 +49,7 @@ admin_data_6876 = {
         "type": "web_app",
         "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.0"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=4.2"
         }
     }
 }

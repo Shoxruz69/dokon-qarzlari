@@ -28,7 +28,8 @@ from database.queries import (
     add_shop_category,
     delete_shop_category,
     update_admin_card,
-    get_shop_debtors_for_broadcast
+    get_shop_debtors_for_broadcast,
+    invalidate_admin_cache
 )
 from utils.validators import validate_phone, validate_amount, validate_date, validate_full_name
 from utils.notifications import (
@@ -91,12 +92,15 @@ async def resolve_shop_id(request: web.Request) -> str:
 # ============================================================
 _stats_memory_cache: Dict[str, Any] = {}
 _customers_memory_cache: Dict[str, Any] = {}
+_categories_memory_cache: Dict[str, Any] = {}
 CACHE_TTL = 30 # soniya (har qanday o'zgarishda darhol tozalanadi)
 
 def invalidate_api_cache():
     """Qarz yoki to'lov o'zgarganda keshni bir zumda tozalash"""
     _stats_memory_cache.clear()
     _customers_memory_cache.clear()
+    _categories_memory_cache.clear()
+    invalidate_admin_cache()
 
 # ============================================================
 # API HANDLERS
@@ -447,7 +451,7 @@ async def handle_customer_delete(request: web.Request):
     return web.json_response({"success": True})
 
 async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
-    """Admin uchun barcha boshlang'ich ma'lumotlarni (stats + customers) bir so'rovda parallel yig'ish (0.01s javob)"""
+    """Admin uchun barcha boshlang'ich ma'lumotlarni (stats + customers + categories) bir so'rovda parallel yig'ish (0.01s javob)"""
     if admin.get("telegram_id") == 7370403444 or settings.is_admin_id(admin.get("telegram_id")) or shop_id in ("64EB6AB2", "F3055FC8") or not shop_id:
         shop_id = "64EB6AB2"
         admin["shop_id"] = "64EB6AB2"
@@ -456,6 +460,7 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
     now = time.time()
     cache_stats_key = f"{shop_id}:today"
     cache_custs_key = f"{shop_id}::all"
+    cache_cats_key = f"{shop_id}:categories"
     
     stats_data = None
     if cache_stats_key in _stats_memory_cache:
@@ -468,30 +473,42 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
         ts, c = _customers_memory_cache[cache_custs_key]
         if now - ts < CACHE_TTL:
             custs_data = c
+
+    cats_data = None
+    if cache_cats_key in _categories_memory_cache:
+        ts, cat = _categories_memory_cache[cache_cats_key]
+        if now - ts < CACHE_TTL:
+            cats_data = cat
             
     tasks = []
-    need_stats = stats_data is None
-    need_custs = custs_data is None
-    
-    if need_stats:
+    task_keys = []
+    if stats_data is None:
         tasks.append(get_admin_stats(shop_id))
-    if need_custs:
+        task_keys.append("stats")
+    if custs_data is None:
         tasks.append(get_customers_list(shop_id))
+        task_keys.append("customers")
+    if cats_data is None:
+        tasks.append(get_shop_categories(shop_id))
+        task_keys.append("categories")
         
     if tasks:
         results = await asyncio.gather(*tasks)
-        idx = 0
-        if need_stats:
-            stats_data = results[idx]
-            stats_data["shop_name"] = admin.get("shop_name") or "Do'kon"
-            stats_data["shop_id"] = shop_id
-            _stats_memory_cache[cache_stats_key] = (now, stats_data)
-            idx += 1
-        if need_custs:
-            custs_data = results[idx]
-            _customers_memory_cache[cache_custs_key] = (now, custs_data)
-            
-    categories_data = await get_shop_categories(shop_id)
+        for k, res in zip(task_keys, results):
+            if k == "stats":
+                stats_data = res
+                stats_data["shop_name"] = admin.get("shop_name") or "Do'kon"
+                stats_data["shop_id"] = shop_id
+                _stats_memory_cache[cache_stats_key] = (now, stats_data)
+            elif k == "customers":
+                custs_data = res
+                _customers_memory_cache[cache_custs_key] = (now, custs_data)
+            elif k == "categories":
+                cats_data = res
+                _categories_memory_cache[cache_cats_key] = (now, cats_data)
+
+    if cats_data is None:
+        cats_data = await get_shop_categories(shop_id)
 
     return {
         "role": "admin",
@@ -499,7 +516,7 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
         "shop_id": shop_id,
         "stats": stats_data,
         "customers": custs_data,
-        "categories": categories_data
+        "categories": cats_data
     }
 
 async def handle_get_me(request: web.Request):
@@ -508,33 +525,57 @@ async def handle_get_me(request: web.Request):
     cust_id_param = request.query.get("customer_id")
     user_id_str = request.headers.get("X-Telegram-User-Id") or request.query.get("user_id")
     
-    # 1. To'g'ridan-to'g'ri customer_id berilgan bo'lsa
+    # 1. Telegram user_id tekshiruvi: Agar foydalanuvchi do'kon admini bo'lsa — HECH QACHON mijoz hisoblanmaydi!
+    if user_id_str and str(user_id_str).isdigit():
+        uid = int(user_id_str)
+        if settings.is_admin_id(uid):
+            admin = await get_admin_by_telegram_id(uid)
+            if not admin:
+                admin_name = resolve_admin_label(uid)
+                admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
+            if admin:
+                admin["full_name"] = resolve_admin_label(uid, admin.get("full_name"))
+                bootstrap = await _get_admin_bootstrap_data(admin, admin.get("shop_id") or "64EB6AB2")
+                return web.json_response(bootstrap)
+
+    # 2. Agar role=admin bo'lsa (yoki havoladan to'g'ridan-to'g'ri admin panel ochilganda)
+    if role_param == "admin":
+        shop_id = await resolve_shop_id(request)
+        admin = await get_admin_by_shop_id(shop_id)
+        if not admin:
+            admin = await get_admin_by_telegram_id(7370403444)
+        if not admin:
+            admin = await get_first_active_admin()
+        if admin:
+            admin["full_name"] = resolve_admin_label(admin.get("telegram_id"), admin.get("full_name"))
+            bootstrap = await _get_admin_bootstrap_data(admin, admin.get("shop_id", "64EB6AB2"))
+            return web.json_response(bootstrap)
+
+    # 3. Agar maxsus role=customer deb ko'rsatilgan bo'lsa — FAQAT MIJOZ KO'RINISHI!
+    if role_param == "customer":
+        if cust_id_param and cust_id_param.isdigit():
+            cust = await get_customer_by_id(int(cust_id_param))
+            if cust:
+                debts = await get_customer_all_debts(int(cust_id_param))
+                return web.json_response({"role": "customer", "customer": cust, "debts": debts})
+        if user_id_str and str(user_id_str).isdigit():
+            custs = await get_customer_by_telegram_id(int(user_id_str))
+            if custs:
+                cust = custs[0]
+                debts = await get_customer_all_debts(cust["id"])
+                return web.json_response({"role": "customer", "customer": cust, "debts": debts})
+        return web.json_response({"role": "customer", "customer": None, "debts": []})
+
+    # 4. Agar customer_id berilgan bo'lsa (va u admin deb belgilanmagan bo'lsa)
     if cust_id_param and cust_id_param.isdigit():
         cust = await get_customer_by_id(int(cust_id_param))
         if cust:
             debts = await get_customer_all_debts(int(cust_id_param))
-            return web.json_response({
-                "role": "customer",
-                "customer": cust,
-                "debts": debts
-            })
+            return web.json_response({"role": "customer", "customer": cust, "debts": debts})
 
-    # 2. Telegram user ID orqali aniqlash
-    if user_id_str and user_id_str.isdigit():
+    # 5. Telegram user ID orqali mijozni aniqlash
+    if user_id_str and str(user_id_str).isdigit():
         uid = int(user_id_str)
-        
-        # Admin tekshiruvi: settings.is_admin_id(uid)
-        admin = await get_admin_by_telegram_id(uid) if settings.is_admin_id(uid) else None
-        if not admin and settings.is_admin_id(uid):
-            # Agar admin bazada hali mavjud bo'lmasa, avtomatik yaratamiz
-            admin_name = resolve_admin_label(uid)
-            admin = await create_admin(telegram_id=uid, full_name=admin_name, shop_name="Kech Harbiy Do'kon")
-
-        if admin:
-            bootstrap = await _get_admin_bootstrap_data(admin, admin.get("shop_id") or "64EB6AB2")
-            return web.json_response(bootstrap)
-
-        # Admindan boshqa har qanday foydalanuvchi — FAQAT MIJOZ!
         custs = await get_customer_by_telegram_id(uid)
         if custs:
             cust = custs[0]
@@ -544,23 +585,13 @@ async def handle_get_me(request: web.Request):
                 "customer": cust,
                 "debts": debts
             })
-
-        # Agar telegram user_id admin bo'lmasa va mijoz ham topilmasa — FAQAT MIJOZ!
         return web.json_response({
             "role": "customer",
             "customer": None,
             "debts": []
         })
 
-    # 3. Agar maxsus role=customer deb ko'rsatilgan bo'lsa — FAQAT MIJOZ KO'RINISHI!
-    if role_param == "customer":
-        return web.json_response({
-            "role": "customer",
-            "customer": None,
-            "debts": []
-        })
-
-    # 4. To'g'ridan-to'g'ri havoladan kirilganda (masalan: https://dokon-qarzlari-wf96.onrender.com) — ADMIN BO'LIMI!
+    # 6. Fallback: To'g'ridan-to'g'ri havoladan kirilganda — ADMIN BO'LIMI!
     shop_id = await resolve_shop_id(request)
     admin = await get_admin_by_shop_id(shop_id)
     if not admin:

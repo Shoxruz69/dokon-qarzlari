@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from typing import Optional
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 from database.queries import (
     get_customer_by_telegram_id,
@@ -95,6 +95,7 @@ async def handle_customer_receipt_photo(message: Message, bot: Bot):
 
     approve_callback = f"chk_appr:{cust_id}:{int(total_debt)}"
     reject_callback = f"chk_rej:{cust_id}"
+    customer_card_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id={shop_id}&customer_id={cust_id}&v=4.2"
 
     admin_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -102,6 +103,12 @@ async def handle_customer_receipt_photo(message: Message, bot: Bot):
                 InlineKeyboardButton(
                     text="✅ Tasdiqlash va qarzdan o'chirish",
                     callback_data=approve_callback
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="👤 Mijoz kartochkasini ochish",
+                    web_app=WebAppInfo(url=customer_card_url)
                 )
             ],
             [
@@ -201,12 +208,25 @@ async def on_admin_approve_receipt(callback: CallbackQuery, bot: Bot):
         "✅ <i>Qarzdorlik bazadan muvaffaqiyatli o'chirildi!</i>"
     )
 
+    shop_id = (cust.get("shop_id") if cust else None) or "64EB6AB2"
+    reject_card_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id={shop_id}&customer_id={cust_id}&v=4.2"
+    reject_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="👤 Mijoz kartochkasini ochish",
+                    web_app=WebAppInfo(url=reject_card_url)
+                )
+            ]
+        ]
+    )
+
     try:
-        await callback.message.edit_caption(caption=new_caption, parse_mode="HTML", reply_markup=None)
+        await callback.message.edit_caption(caption=new_caption, parse_mode="HTML", reply_markup=reject_keyboard)
     except Exception:
         pass
 
-    await callback.answer("✅ To'lov tasdiqlandi va qarz o'chirildi!", show_alert=True)
+    await callback.answer("✅ To'lov tasdiqlandi va qarz o'chirildi!", show_alert=False)
 
     # Mijozga quvonchli xabar yuborish
     cust_tg_id = cust.get("telegram_id")
@@ -252,8 +272,21 @@ async def on_admin_reject_receipt(callback: CallbackQuery, bot: Bot):
         "❌ <i>Chek rad etildi, mijoz qarzi o'zgarishsiz qoldirildi.</i>"
     )
 
+    shop_id = (cust.get("shop_id") if cust else None) or "64EB6AB2"
+    reject_card_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id={shop_id}&customer_id={cust_id}&v=4.2"
+    reject_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="👤 Mijoz kartochkasini ochish",
+                    web_app=WebAppInfo(url=reject_card_url)
+                )
+            ]
+        ]
+    )
+
     try:
-        await callback.message.edit_caption(caption=new_caption, parse_mode="HTML", reply_markup=None)
+        await callback.message.edit_caption(caption=new_caption, parse_mode="HTML", reply_markup=reject_keyboard)
     except Exception:
         pass
 
