@@ -207,7 +207,9 @@ async def add_customer(
     debt_date: Optional[str] = None,
     admin_id: Optional[int] = None,
     admin_name: Optional[str] = None,
-    category: Optional[str] = None
+    category: Optional[str] = None,
+    product_id: Optional[int] = None,
+    product_qty: int = 1
 ) -> dict:
     """Mijoz va uning dastlabki qarzini kiritish"""
     d_date = date.fromisoformat(debt_date) if debt_date else date.today()
@@ -255,6 +257,13 @@ async def add_customer(
         INSERT INTO debts (customer_id, shop_id, amount, description, debt_date, due_date, status, created_by_admin_id, created_by_admin_name, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
     """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, admin_id, resolved_name, now_dt, now_dt)
+
+    # 3. Agar tovar tanlangan bo'lsa, avtomatik ravishda tovar qoldig'idan ayiramiz
+    if product_id and int(product_id) > 0:
+        try:
+            await decrement_product_stock(int(product_id), int(product_qty or 1))
+        except Exception as e:
+            logger.warning(f"Tovar qoldig'ini kamaytirishda xatolik: {e}")
 
     return {
         "customer_id": customer_id,
@@ -670,7 +679,9 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
         month_given,
         month_paid,
         overall_row,
-        admin
+        admin,
+        products_summary,
+        products_list
     ) = await asyncio.gather(
         # 1. Tanlangan kungi berilgan qarzlar ro'yxati
         db_fetch_all("""
@@ -726,7 +737,10 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
             WHERE c.shop_id = ?
         """, shop_id),
         # 6. Do'kon ma'lumotlari
-        get_admin_by_shop_id(shop_id)
+        get_admin_by_shop_id(shop_id),
+        # 7. Ombordagi tovarlar xulosasi va ro'yxati
+        get_products_summary(shop_id),
+        get_shop_products(shop_id)
     )
 
     given_row = {
@@ -741,12 +755,16 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
     }
 
     shop_name = admin["shop_name"] if admin else "Do'kon"
+    prod_summary = products_summary if isinstance(products_summary, dict) else {"total_types": 0, "total_quantity": 0, "total_value": 0.0}
+    prod_list = products_list if isinstance(products_list, list) else []
 
     return {
         "shop_id": shop_id,
         "shop_name": shop_name,
         "selected_date": str(t_date),
         "is_today": (t_date == today_dt),
+        "products_summary": prod_summary,
+        "products": prod_list,
         "daily": {
             "date": str(t_date),
             "given_customers_count": int(given_row["cust_count"]) if given_row else 0,
@@ -774,7 +792,9 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
             "total_customers": int(overall_row["total_customers"]) if overall_row else 0,
             "active_debts": int(overall_row["active_debts"]) if overall_row else 0,
             "overdue_debts": int(overall_row["overdue_debts"]) if overall_row else 0,
-            "due_this_week": int(overall_row["due_this_week"]) if overall_row else 0
+            "due_this_week": int(overall_row["due_this_week"]) if overall_row else 0,
+            "total_products_qty": prod_summary.get("total_quantity", 0),
+            "total_products_types": prod_summary.get("total_types", 0)
         },
         # Dashboard asosiy kartalari uchun moslik
         "total_customers": int(overall_row["total_customers"]) if overall_row else 0,
@@ -782,7 +802,9 @@ async def get_detailed_stats(shop_id: str, target_date: Optional[str] = None) ->
         "overdue_debts": int(overall_row["overdue_debts"]) if overall_row else 0,
         "total_debt_sum": float(overall_row["total_debt_sum"]) if overall_row else 0.0,
         "month_paid_sum": float(month_paid["total_sum"]) if month_paid else 0.0,
-        "due_this_week": int(overall_row["due_this_week"]) if overall_row else 0
+        "due_this_week": int(overall_row["due_this_week"]) if overall_row else 0,
+        "total_products_qty": prod_summary.get("total_quantity", 0),
+        "total_products_types": prod_summary.get("total_types", 0)
     }
 
 async def delete_debt(debt_id: int, shop_id: str) -> bool:
@@ -895,7 +917,9 @@ async def add_debt_to_existing_customer(
     due_date: str,
     notes: Optional[str] = None,
     admin_id: Optional[int] = None,
-    admin_name: Optional[str] = None
+    admin_name: Optional[str] = None,
+    product_id: Optional[int] = None,
+    product_qty: int = 1
 ) -> dict:
     """Mavjud mijozga yangi qarz qo'shish"""
     cust = await db_fetch_one("SELECT * FROM customers WHERE id = ? AND shop_id = ?", customer_id, shop_id)
@@ -915,6 +939,13 @@ async def add_debt_to_existing_customer(
     """, customer_id, shop_id, float(amount), desc_val, d_date, d_due, notes, admin_id, resolved_name, now_dt, now_dt)
 
     await db_execute("UPDATE customers SET total_debt = ? WHERE id = ?", new_total, customer_id)
+
+    # Agar tovar tanlangan bo'lsa, qoldig'idan ayiramiz
+    if product_id and int(product_id) > 0:
+        try:
+            await decrement_product_stock(int(product_id), int(product_qty or 1))
+        except Exception as e:
+            logger.warning(f"Tovar qoldig'ini kamaytirishda xatolik: {e}")
 
     admin = await get_admin_by_shop_id(shop_id)
 
@@ -1010,3 +1041,132 @@ async def get_shop_debtors_for_broadcast(shop_id: str, category: Optional[str] =
             params.append(category.strip())
     query += " ORDER BY id DESC"
     return await db_fetch_all(query, *params)
+
+# ============================================================
+# 9. TOVARLAR / MAHSULOTLAR OMBORI (INVENTORY)
+# ============================================================
+
+async def get_shop_products(shop_id: str) -> List[dict]:
+    """Do'kondagi barcha tovarlar va ularning qoldiq soni"""
+    return await db_fetch_all("""
+        SELECT id, shop_id, name, quantity, price, created_at, updated_at
+        FROM products
+        WHERE shop_id = ?
+        ORDER BY name ASC
+    """, shop_id)
+
+async def add_or_update_product(shop_id: str, name: str, quantity: int, price: float = 0.0) -> dict:
+    """Yangi tovar qo'shish yoki mavjud tovar sonini oshirish"""
+    clean_name = name.strip()
+    clean_qty = max(0, int(quantity))
+    clean_price = max(0.0, float(price or 0.0))
+
+    existing = await db_fetch_one("""
+        SELECT * FROM products WHERE shop_id = ? AND LOWER(name) = LOWER(?)
+    """, shop_id, clean_name)
+
+    if existing:
+        new_qty = int(existing.get("quantity") or 0) + clean_qty
+        new_price = clean_price if clean_price > 0 else float(existing.get("price") or 0.0)
+        await db_execute("""
+            UPDATE products 
+            SET quantity = ?, price = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, new_qty, new_price, existing["id"])
+        return {
+            "id": existing["id"],
+            "shop_id": shop_id,
+            "name": existing["name"],
+            "quantity": new_qty,
+            "price": new_price,
+            "is_new": False
+        }
+    else:
+        pid = await db_execute_insert("""
+            INSERT INTO products (shop_id, name, quantity, price, created_at, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, shop_id, clean_name, clean_qty, clean_price)
+        return {
+            "id": pid,
+            "shop_id": shop_id,
+            "name": clean_name,
+            "quantity": clean_qty,
+            "price": clean_price,
+            "is_new": True
+        }
+
+async def update_product_stock(product_id: int, quantity: int, name: Optional[str] = None, price: Optional[float] = None) -> Optional[dict]:
+    """Tovar soni yoki ma'lumotlarini to'g'ridan-to'g'ri yangilash"""
+    clean_qty = max(0, int(quantity))
+    if name:
+        clean_name = name.strip()
+        if price is not None:
+            await db_execute("""
+                UPDATE products 
+                SET quantity = ?, name = ?, price = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, clean_qty, clean_name, float(price), product_id)
+        else:
+            await db_execute("""
+                UPDATE products 
+                SET quantity = ?, name = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, clean_qty, clean_name, product_id)
+    else:
+        if price is not None:
+            await db_execute("""
+                UPDATE products 
+                SET quantity = ?, price = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, clean_qty, float(price), product_id)
+        else:
+            await db_execute("""
+                UPDATE products 
+                SET quantity = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, clean_qty, product_id)
+
+    return await db_fetch_one("SELECT * FROM products WHERE id = ?", product_id)
+
+async def decrement_product_stock(product_id: int, count: int = 1) -> Optional[dict]:
+    """Mijoz mahsulot olganda tovar qoldig'idan ayirish (masalan: 30 sapokdan 2 ta olsa, 28 qoladi)"""
+    clean_count = max(1, int(count))
+    if is_postgres():
+        row = await db_fetch_one("""
+            UPDATE products 
+            SET quantity = GREATEST(0, quantity - ?), updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ? 
+            RETURNING *
+        """, clean_count, product_id)
+        return row
+    else:
+        prod = await db_fetch_one("SELECT * FROM products WHERE id = ?", product_id)
+        if prod:
+            new_qty = max(0, int(prod.get("quantity") or 0) - clean_count)
+            await db_execute("""
+                UPDATE products SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            """, new_qty, product_id)
+            prod["quantity"] = new_qty
+            return prod
+        return None
+
+async def delete_product(product_id: int, shop_id: str) -> bool:
+    """Tovarni o'chirish"""
+    await db_execute("DELETE FROM products WHERE id = ? AND shop_id = ?", product_id, shop_id)
+    return True
+
+async def get_products_summary(shop_id: str) -> dict:
+    """Ombordagi tovarlar umumiy hisoboti"""
+    row = await db_fetch_one("""
+        SELECT 
+            COUNT(id) as total_types,
+            COALESCE(SUM(quantity), 0) as total_quantity,
+            COALESCE(SUM(quantity * price), 0) as total_value
+        FROM products 
+        WHERE shop_id = ?
+    """, shop_id)
+    return {
+        "total_types": int(row.get("total_types") or 0) if row else 0,
+        "total_quantity": int(row.get("total_quantity") or 0) if row else 0,
+        "total_value": float(row.get("total_value") or 0.0) if row else 0.0
+    }

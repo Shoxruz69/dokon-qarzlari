@@ -29,7 +29,12 @@ from database.queries import (
     delete_shop_category,
     update_admin_card,
     get_shop_debtors_for_broadcast,
-    invalidate_admin_cache
+    invalidate_admin_cache,
+    get_shop_products,
+    add_or_update_product,
+    update_product_stock,
+    delete_product,
+    get_products_summary
 )
 from utils.validators import validate_phone, validate_amount, validate_date, validate_full_name
 from utils.notifications import (
@@ -93,13 +98,15 @@ async def resolve_shop_id(request: web.Request) -> str:
 _stats_memory_cache: Dict[str, Any] = {}
 _customers_memory_cache: Dict[str, Any] = {}
 _categories_memory_cache: Dict[str, Any] = {}
+_products_memory_cache: Dict[str, Any] = {}
 CACHE_TTL = 30 # soniya (har qanday o'zgarishda darhol tozalanadi)
 
 def invalidate_api_cache():
-    """Qarz yoki to'lov o'zgarganda keshni bir zumda tozalash"""
+    """Qarz, to'lov yoki tovar o'zgarganda keshni bir zumda tozalash"""
     _stats_memory_cache.clear()
     _customers_memory_cache.clear()
     _categories_memory_cache.clear()
+    _products_memory_cache.clear()
     invalidate_admin_cache()
 
 # ============================================================
@@ -217,6 +224,11 @@ async def handle_add_customer(request: web.Request):
     admin_name_val = request.headers.get("X-Admin-Name") or data.get("admin_name")
     admin_id = int(admin_id_val) if admin_id_val and str(admin_id_val).isdigit() else 0
 
+    product_id_raw = data.get("product_id")
+    product_qty_raw = data.get("product_qty")
+    product_id = int(product_id_raw) if product_id_raw and str(product_id_raw).isdigit() else None
+    product_qty = int(product_qty_raw) if product_qty_raw and str(product_qty_raw).isdigit() else 1
+
     result = await add_customer(
         shop_id=shop_id,
         full_name=name_val,
@@ -227,7 +239,9 @@ async def handle_add_customer(request: web.Request):
         notes=notes,
         admin_id=admin_id,
         admin_name=admin_name_val,
-        category=category
+        category=category,
+        product_id=product_id,
+        product_qty=product_qty
     )
     invalidate_api_cache()
     return web.json_response(result)
@@ -362,8 +376,17 @@ async def handle_customer_add_debt(request: web.Request):
     admin_name_val = request.headers.get("X-Admin-Name") or data.get("admin_name")
     admin_id = int(admin_id_val) if admin_id_val and str(admin_id_val).isdigit() else 0
 
+    product_id_raw = data.get("product_id")
+    product_qty_raw = data.get("product_qty")
+    product_id = int(product_id_raw) if product_id_raw and str(product_id_raw).isdigit() else None
+    product_qty = int(product_qty_raw) if product_qty_raw and str(product_qty_raw).isdigit() else 1
+
     try:
-        result = await add_debt_to_existing_customer(customer_id, shop_id, amt_val, description, date_val, notes, admin_id=admin_id, admin_name=admin_name_val)
+        result = await add_debt_to_existing_customer(
+            customer_id, shop_id, amt_val, description, date_val, notes,
+            admin_id=admin_id, admin_name=admin_name_val,
+            product_id=product_id, product_qty=product_qty
+        )
     except ValueError as e:
         return web.json_response({"detail": str(e)}, status=400)
 
@@ -461,6 +484,7 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
     cache_stats_key = f"{shop_id}:today"
     cache_custs_key = f"{shop_id}::all"
     cache_cats_key = f"{shop_id}:categories"
+    cache_prods_key = f"{shop_id}:products"
     
     stats_data = None
     if cache_stats_key in _stats_memory_cache:
@@ -479,6 +503,12 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
         ts, cat = _categories_memory_cache[cache_cats_key]
         if now - ts < CACHE_TTL:
             cats_data = cat
+
+    prods_data = None
+    if cache_prods_key in _products_memory_cache:
+        ts, pr = _products_memory_cache[cache_prods_key]
+        if now - ts < CACHE_TTL:
+            prods_data = pr
             
     tasks = []
     task_keys = []
@@ -491,6 +521,9 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
     if cats_data is None:
         tasks.append(get_shop_categories(shop_id))
         task_keys.append("categories")
+    if prods_data is None:
+        tasks.append(get_shop_products(shop_id))
+        task_keys.append("products")
         
     if tasks:
         results = await asyncio.gather(*tasks)
@@ -506,9 +539,14 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
             elif k == "categories":
                 cats_data = res
                 _categories_memory_cache[cache_cats_key] = (now, cats_data)
+            elif k == "products":
+                prods_data = res
+                _products_memory_cache[cache_prods_key] = (now, prods_data)
 
     if cats_data is None:
         cats_data = await get_shop_categories(shop_id)
+    if prods_data is None:
+        prods_data = await get_shop_products(shop_id)
 
     return {
         "role": "admin",
@@ -516,7 +554,8 @@ async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
         "shop_id": shop_id,
         "stats": stats_data,
         "customers": custs_data,
-        "categories": cats_data
+        "categories": cats_data,
+        "products": prods_data or []
     }
 
 async def handle_get_me(request: web.Request):
@@ -691,6 +730,88 @@ async def handle_delete_category(request: web.Request):
     cats = await get_shop_categories(shop_id)
     return web.json_response({"ok": ok, "success": ok, "categories": cats})
 
+async def handle_get_products(request: web.Request):
+    """GET /api/products"""
+    shop_id = await resolve_shop_id(request)
+    now = time.time()
+    cache_key = f"{shop_id}:products"
+    if cache_key in _products_memory_cache:
+        ts, data = _products_memory_cache[cache_key]
+        if now - ts < CACHE_TTL:
+            return web.json_response(data)
+    prods = await get_shop_products(shop_id)
+    _products_memory_cache[cache_key] = (now, prods)
+    return web.json_response(prods)
+
+async def handle_add_product(request: web.Request):
+    """POST /api/products/add"""
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({"detail": "Noto'g'ri JSON formati"}, status=400)
+    
+    shop_id = data.get("shop_id") or await resolve_shop_id(request)
+    name = (data.get("name") or "").strip()
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (ValueError, TypeError):
+        quantity = 0
+    try:
+        price = float(data.get("price") or 0.0)
+    except (ValueError, TypeError):
+        price = 0.0
+
+    if not name:
+        return web.json_response({"detail": "Tovar nomi kiritilishi shart"}, status=400)
+
+    res = await add_or_update_product(shop_id, name, quantity, price)
+    invalidate_api_cache()
+    prods = await get_shop_products(shop_id)
+    return web.json_response({"ok": True, "success": True, "product": res, "products": prods})
+
+async def handle_update_product(request: web.Request):
+    """POST /api/products/{id}/update yoki PUT /api/products/{id}"""
+    try:
+        product_id = int(request.match_info["id"])
+    except (ValueError, TypeError):
+        return web.json_response({"detail": "Noto'g'ri product_id"}, status=400)
+
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({"detail": "Noto'g'ri JSON formati"}, status=400)
+
+    quantity = data.get("quantity")
+    name = data.get("name")
+    price = data.get("price")
+
+    if quantity is None:
+        return web.json_response({"detail": "quantity ko'rsatilishi shart"}, status=400)
+
+    res = await update_product_stock(
+        product_id=product_id,
+        quantity=int(quantity),
+        name=str(name).strip() if name else None,
+        price=float(price) if price is not None else None
+    )
+    invalidate_api_cache()
+    shop_id = await resolve_shop_id(request)
+    prods = await get_shop_products(shop_id)
+    return web.json_response({"ok": True, "success": True, "product": res, "products": prods})
+
+async def handle_delete_product(request: web.Request):
+    """POST /api/products/{id}/delete yoki DELETE /api/products/{id}"""
+    try:
+        product_id = int(request.match_info["id"])
+    except (ValueError, TypeError):
+        return web.json_response({"detail": "Noto'g'ri product_id"}, status=400)
+
+    shop_id = await resolve_shop_id(request)
+    await delete_product(product_id, shop_id)
+    invalidate_api_cache()
+    prods = await get_shop_products(shop_id)
+    return web.json_response({"ok": True, "success": True, "products": prods})
+
 async def handle_save_card_settings(request: web.Request):
     """POST /api/settings/card - Karta ma'lumotlarini saqlash"""
     try:
@@ -826,6 +947,16 @@ def create_web_app() -> web.Application:
     app.router.add_delete("/api/categories/{id}", handle_delete_category)
     app.router.add_post("/api/settings/card", handle_save_card_settings)
     app.router.add_post("/api/settings/broadcast-card", handle_broadcast_card)
+
+    # Tovarlar / Mahsulotlar (Ombor)
+    app.router.add_get("/api/products", handle_get_products)
+    app.router.add_get("/api/products/", handle_get_products)
+    app.router.add_get("/api/products/{shop_id}", handle_get_products)
+    app.router.add_post("/api/products/add", handle_add_product)
+    app.router.add_post("/api/products/{id}/update", handle_update_product)
+    app.router.add_put("/api/products/{id}", handle_update_product)
+    app.router.add_post("/api/products/{id}/delete", handle_delete_product)
+    app.router.add_delete("/api/products/{id}", handle_delete_product)
     
     # Static files & Mini App
     app.router.add_get("/", handle_index)

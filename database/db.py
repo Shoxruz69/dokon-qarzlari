@@ -210,6 +210,17 @@ async def init_db():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(shop_id, name)
                 );
+
+                CREATE TABLE IF NOT EXISTS products (
+                    id SERIAL PRIMARY KEY,
+                    shop_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    price NUMERIC(15, 2) DEFAULT 0,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(shop_id, name)
+                );
                 
                 CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
@@ -217,6 +228,7 @@ async def init_db():
                 CREATE INDEX IF NOT EXISTS idx_debts_shop ON debts(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_debts_status ON debts(status);
                 CREATE INDEX IF NOT EXISTS idx_debts_due_date ON debts(due_date);
+                CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
 
                 ALTER TABLE customers ALTER COLUMN phone DROP NOT NULL;
                 ALTER TABLE debts ALTER COLUMN description DROP NOT NULL;
@@ -229,8 +241,8 @@ async def init_db():
                 ALTER TABLE customers ADD COLUMN IF NOT EXISTS category TEXT;
             """)
             try:
-                # 1. 64EB6AB2 adminini yaratish yoki yangilash (Faqat 7370403444 - G'iyos)
-                await conn.execute("DELETE FROM admins WHERE telegram_id = 7370403444 AND shop_id != '64EB6AB2';")
+                # 1. 64EB6AB2 adminini yaratish yoki yangilash (7370403444 - G'iyos, 6876312568 - Shoxruz)
+                await conn.execute("DELETE FROM admins WHERE telegram_id IN (7370403444, 6876312568) AND shop_id != '64EB6AB2';")
                 shop_admin = await conn.fetchrow("SELECT * FROM admins WHERE shop_id = '64EB6AB2';")
                 if shop_admin:
                     await conn.execute("UPDATE admins SET telegram_id = 7370403444, full_name = 'G''iyos', shop_name = 'Kech Harbiy Do''kon', is_active = TRUE WHERE shop_id = '64EB6AB2';")
@@ -260,8 +272,8 @@ async def init_db():
                 await conn.execute("DELETE FROM categories WHERE shop_id != '64EB6AB2';")
                 await conn.execute("DELETE FROM customers WHERE shop_id != '64EB6AB2';")
 
-                # 3. Boshqa adminlarni tozalash (faqat 7370403444 qoladi)
-                await conn.execute("DELETE FROM admins WHERE telegram_id != 7370403444;")
+                # 3. Boshqa adminlarni tozalash (faqat 7370403444 va 6876312568 qoladi)
+                await conn.execute("DELETE FROM admins WHERE telegram_id NOT IN (7370403444, 6876312568);")
             except Exception as e:
                 logger.warning(f"Postgres admin sync xatosi: {e}")
         logger.info("✅ Supabase / PostgreSQL ma'lumotlar bazasi tayyorlandi")
@@ -348,6 +360,17 @@ async def init_db():
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(shop_id, name)
                 );
+
+                CREATE TABLE IF NOT EXISTS products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    shop_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    price REAL DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(shop_id, name)
+                );
                 
                 CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
@@ -355,6 +378,7 @@ async def init_db():
                 CREATE INDEX IF NOT EXISTS idx_debts_shop ON debts(shop_id);
                 CREATE INDEX IF NOT EXISTS idx_debts_status ON debts(status);
                 CREATE INDEX IF NOT EXISTS idx_debts_due_date ON debts(due_date);
+                CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
             """)
             try:
                 await db.execute("ALTER TABLE debts ADD COLUMN created_by_admin_id BIGINT;")

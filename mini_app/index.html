@@ -1338,6 +1338,19 @@
         <div class="stat-value" id="stat-week">0 ta</div>
         <div class="stat-label">Bu hafta to'lanishi kerak</div>
       </div>
+
+      <div class="stat-card" style="border-top:3px solid #8B5CF6">
+        <div class="stat-card-header">
+          <div class="stat-icon" style="background:#EDE9FE; color:#7C3AED;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+          </div>
+          <span class="badge" style="background:#EDE9FE; color:#7C3AED; font-weight:700;">Ombor</span>
+        </div>
+        <div class="stat-value" id="stat-products">0 ta</div>
+        <div class="stat-label">Do'kondagi tovarlar</div>
+      </div>
     </div>
     <script>
       (function() {
@@ -1491,16 +1504,38 @@
         <div class="error-msg" id="err-amount"></div>
       </div>
 
-      <!-- Mahsulot -->
+      <!-- Mahsulot (Tovar tanlash) -->
       <div class="form-group">
-        <label class="form-label">Nima oldi (Mahsulotlar) <span style="font-weight:400;color:var(--text-light);font-size:12px">(ixtiyoriy)</span></label>
+        <label class="form-label">Nima oldi (Tovar / Mahsulot)</label>
         <div class="input-box">
           <span class="input-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
           </span>
-          <input type="text" class="custom-input" id="inp-desc" placeholder="Masalan: Un, yog', shakar (ixtiyoriy)">
+          <select class="custom-input" id="inp-product-select" onchange="onProductSelectChanged('add')" style="cursor:pointer">
+            <option value="">-- Tovarni tanlang (yoki qo'lda yozish) --</option>
+            <option value="manual">✍️ Boshqa (qo'lda kiritish)</option>
+          </select>
+        </div>
+
+        <!-- Tovar sonini tanlash (Stepper: [-] 1 ta [+]) -->
+        <div id="inp-product-qty-wrap" style="display:none; align-items:center; justify-content:space-between; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; margin-top:8px;">
+          <span style="font-size:13px; font-weight:700; color:var(--text-main);">Nechta oldi (Soni):</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" onclick="changeProductFormQty('add', -1)" style="width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg-app); font-weight:800; font-size:16px; cursor:pointer;">-</button>
+            <input type="number" id="inp-product-qty" value="1" min="1" max="9999" oninput="onProductSelectChanged('add')" style="width:50px; text-align:center; font-weight:800; font-size:15px; border:1px solid var(--border); border-radius:6px; padding:4px;">
+            <button type="button" onclick="changeProductFormQty('add', 1)" style="width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg-app); font-weight:800; font-size:16px; cursor:pointer;">+</button>
+          </div>
+        </div>
+        <div id="inp-product-stock-info" style="display:none; font-size:11.5px; margin-top:6px; padding:6px 10px; border-radius:6px; background:var(--bg-app); border:1px solid var(--border); color:var(--text-muted);"></div>
+
+        <!-- Qo'shimcha / Qo'lda kiritiladigan mahsulot nomi -->
+        <div class="input-box" style="margin-top:8px;">
+          <span class="input-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </span>
+          <input type="text" class="custom-input" id="inp-desc" placeholder="Mahsulot nomi yoki tavsif (ixtiyoriy)">
         </div>
         <div class="error-msg" id="err-desc"></div>
       </div>
@@ -1707,7 +1742,45 @@
       </div>
     </div>
 
-    <!-- 3. DO'KON MA'LUMOTLARI -->
+    <!-- 3. TOVARLAR VA MAHSULOTLAR (OMBOR HISOBI) -->
+    <div class="form-card" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:20px;">📦</span>
+        <div>
+          <h3 style="font-size:16px; font-weight:700; color:var(--text-main); margin:0;">Tovarlar va Mahsulotlar (Ombor)</h3>
+          <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Do'kondagi tovarlar nomi, soni va narxini boshqarish</p>
+        </div>
+      </div>
+
+      <!-- Tovar qo'shish formasi -->
+      <div style="background:var(--bg-app); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:12px; margin-bottom:14px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase;">Yangi tovar qo'shish</div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <input type="text" class="custom-input" id="inp-new-prod-name" placeholder="Tovar nomi (masalan: Sapok)">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div>
+            <label style="font-size:11px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:3px;">Soni (dona) *</label>
+            <input type="number" class="custom-input" id="inp-new-prod-qty" placeholder="30" min="0" value="10">
+          </div>
+          <div>
+            <label style="font-size:11px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:3px;">Narxi (so'm, ixtiyoriy)</label>
+            <input type="text" class="custom-input" id="inp-new-prod-price" placeholder="150 000" inputmode="numeric">
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="addNewProductFromSettings()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          + Tovar qo'shish
+        </button>
+      </div>
+
+      <!-- Tovarlar ro'yxati -->
+      <div id="settingsProductsList" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="skeleton-card" style="height:45px"></div>
+      </div>
+    </div>
+
+    <!-- 4. DO'KON MA'LUMOTLARI -->
     <div class="form-card">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
         <span style="font-size:20px;">🏪</span>
@@ -1797,6 +1870,7 @@
     let currentFilter = 'all';
     let allCustomers = [];
     let allCategories = getLocalCache('dh_categories') || [];
+    let allProducts = getLocalCache('dh_products') || [];
     let adminCardData = getLocalCache('dh_card_data') || null;
     let cachedStats = null;
     let statsPeriod = 'today';
@@ -1830,12 +1904,16 @@
       const _initStats = getLocalCache('dh_stats');
       const _initCusts = getLocalCache('dh_customers') || [];
       const _initCats = getLocalCache('dh_categories') || [];
+      const _initProds = getLocalCache('dh_products') || [];
       if (_initStats) {
         cachedStats = _initStats;
         allCustomers = _initCusts;
       }
       if (_initCats && _initCats.length) {
         allCategories = _initCats;
+      }
+      if (_initProds && _initProds.length) {
+        allProducts = _initProds;
       }
     } catch (e) {}
 
@@ -1925,7 +2003,7 @@
         if (name === 'customers') loadCustomers();
         if (name === 'stats') loadStats();
         if (name === 'settings') loadSettings();
-        if (name === 'add') { resetForm(); updateCategorySelectOptions(); }
+        if (name === 'add') { resetForm(); updateCategorySelectOptions(); updateProductSelectOptions(); }
       } else if (name === 'customers' && prevScreen === 'detail') {
         renderFilteredCustomers('');
       }
@@ -1962,6 +2040,13 @@
       document.getElementById('stat-active').textContent = `${stats.active_debts || 0} ta`;
       document.getElementById('stat-customers').textContent = `${stats.total_customers || 0} ta`;
       document.getElementById('stat-week').textContent = `${stats.due_this_week || 0} ta`;
+
+      const prodEl = document.getElementById('stat-products');
+      if (prodEl) {
+        const pCount = (allProducts || []).length;
+        const pTotalQty = (allProducts || []).reduce((acc, x) => acc + (x.quantity || 0), 0);
+        prodEl.textContent = `${pCount} xil (${pTotalQty} ta)`;
+      }
 
       renderRecentCustomers((custs || []).slice(0, 5));
     }
@@ -2221,6 +2306,13 @@
               </button>
             </div>
 
+            <!-- TELEFON QILISH TUGMASI -->
+            ${existing.phone ? `
+            <a href="tel:${existing.phone.replace(/[^+\d]/g, '')}" class="btn" style="width:100%; margin-top:10px; background:linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color:white; font-weight:700; padding:11px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;" onclick="triggerPhoneCall('${escHtml(existing.phone)}', event)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span>📞 Telefon qilish (${escHtml(existing.phone)})</span>
+            </a>` : ''}
+
             <!-- KARTA YUBORISH TUGMASI -->
             <button type="button" class="btn" style="width:100%; margin-top:10px; background:linear-gradient(135deg, #059669 0%, #10B981 100%); color:white; font-weight:700; padding:10px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; gap:8px;" onclick="sendCardToSpecificCustomer(${existing.id}, '${escHtml(existing.full_name)}')">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -2400,6 +2492,13 @@
               </button>
             </div>
 
+            <!-- TELEFON QILISH TUGMASI -->
+            ${data.phone ? `
+            <a href="tel:${data.phone.replace(/[^+\d]/g, '')}" class="btn" style="width:100%; margin-top:10px; background:linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color:white; font-weight:700; padding:11px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;" onclick="triggerPhoneCall('${escHtml(data.phone)}', event)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span>📞 Telefon qilish (${escHtml(data.phone)})</span>
+            </a>` : ''}
+
             <!-- KARTA YUBORISH TUGMASI -->
             <button type="button" class="btn" style="width:100%; margin-top:10px; background:linear-gradient(135deg, #059669 0%, #10B981 100%); color:white; font-weight:700; padding:10px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; gap:8px;" onclick="sendCardToSpecificCustomer(${data.id}, '${escHtml(data.full_name)}')">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -2427,6 +2526,32 @@
         `;
       } catch (err) {
         container.innerHTML = `<div class="empty-box"><div class="empty-title">Xatolik yuz berdi</div><div class="empty-sub">${err.message}</div></div>`;
+      }
+    }
+
+    function triggerPhoneCall(phoneStr, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (!phoneStr) {
+        showToast("Telefon raqami kiritilmagan", "error");
+        return;
+      }
+      const cleanPhone = phoneStr.replace(/[^+\d]/g, '');
+      if (!cleanPhone) {
+        showToast("Noto'g'ri telefon raqam", "error");
+        return;
+      }
+      haptic('impact', 'medium');
+      try {
+        if (window.Telegram?.WebApp?.openLink) {
+          window.Telegram.WebApp.openLink('tel:' + cleanPhone);
+        } else {
+          window.location.href = 'tel:' + cleanPhone;
+        }
+      } catch (e) {
+        window.location.href = 'tel:' + cleanPhone;
       }
     }
 
@@ -2588,6 +2713,16 @@
       clearFieldError('adddebt-desc');
       clearFieldError('adddebt-date');
 
+      updateProductSelectOptions();
+      const pSel = document.getElementById('inp-adddebt-product-select');
+      if (pSel) pSel.value = '';
+      const pWrap = document.getElementById('inp-adddebt-product-qty-wrap');
+      if (pWrap) pWrap.style.display = 'none';
+      const pStock = document.getElementById('inp-adddebt-product-stock-info');
+      if (pStock) pStock.style.display = 'none';
+      const pQty = document.getElementById('inp-adddebt-product-qty');
+      if (pQty) pQty.value = '1';
+
       const btnDebt = document.getElementById('btnSubmitAddDebt');
       if (btnDebt) {
         btnDebt.disabled = false;
@@ -2653,18 +2788,38 @@
       btn.disabled = true;
       btn.innerHTML = 'Saqlanmoqda...';
 
+      const prodSelect = document.getElementById('inp-adddebt-product-select');
+      const selectedProdId = prodSelect && prodSelect.value && prodSelect.value !== 'manual' ? parseInt(prodSelect.value) : null;
+      const prodQty = selectedProdId ? (parseInt(document.getElementById('inp-adddebt-product-qty')?.value || '1') || 1) : 1;
+
       try {
-        const res = await apiRequest(`/api/customer/${activeCustomerId}/add-debt`, 'POST', {
+        const debtPayload = {
           shop_id: shopData.shopId,
           amount: amountVal,
           description: descVal,
           due_date: dateVal,
           notes: notesVal
-        });
+        };
+        if (selectedProdId) {
+          debtPayload.product_id = selectedProdId;
+          debtPayload.product_qty = prodQty;
+        }
+        const res = await apiRequest(`/api/customer/${activeCustomerId}/add-debt`, 'POST', debtPayload);
 
         haptic('notification', 'success');
         document.getElementById('modalAddDebt').classList.remove('show');
         showToast(`${formatMoney(amountVal)} qarz qo'shildi! Jami: ${formatMoney(res.total_debt)}`, 'success');
+
+        // Ombordagi tovar qoldig'ini darhol yangilash
+        if (selectedProdId && allProducts && allProducts.length) {
+          const p = allProducts.find(x => x.id === selectedProdId);
+          if (p) {
+            p.quantity = Math.max(0, (p.quantity || 0) - prodQty);
+            setLocalCache('dh_products', allProducts);
+            updateProductSelectOptions();
+            renderSettingsProducts();
+          }
+        }
 
         // Optimistik tezkor yangilash (0 ms)
         if (allCustomers && allCustomers.length) {
@@ -2851,6 +3006,15 @@
       });
       setPhoneCountry('inp-phone', 'uz');
       setQuickDays(7);
+
+      const prodSel = document.getElementById('inp-product-select');
+      if (prodSel) prodSel.value = '';
+      const prodWrap = document.getElementById('inp-product-qty-wrap');
+      if (prodWrap) prodWrap.style.display = 'none';
+      const prodStock = document.getElementById('inp-product-stock-info');
+      if (prodStock) prodStock.style.display = 'none';
+      const prodQty = document.getElementById('inp-product-qty');
+      if (prodQty) prodQty.value = '1';
     }
 
     function formatNumberWithSpaces(val) {
@@ -3114,6 +3278,10 @@
 
       try {
         const categoryVal = (document.getElementById('inp-category')?.value || '').trim();
+        const prodSelect = document.getElementById('inp-product-select');
+        const selectedProdId = prodSelect && prodSelect.value && prodSelect.value !== 'manual' ? parseInt(prodSelect.value) : null;
+        const prodQty = selectedProdId ? (parseInt(document.getElementById('inp-product-qty')?.value || '1') || 1) : 1;
+
         const payload = {
           shop_id: shopData.shopId || '64EB6AB2',
           full_name: name,
@@ -3124,9 +3292,25 @@
           due_date: date,
           notes: notes || null
         };
+        if (selectedProdId) {
+          payload.product_id = selectedProdId;
+          payload.product_qty = prodQty;
+        }
+
         const res = await apiRequest('/api/customers/add', 'POST', payload);
         haptic('notification', 'success');
         showToast(res.is_new ? "Yangi mijoz saqlandi" : "Qarz qo'shildi", "success");
+
+        // Ombordagi tovar qoldig'ini darhol yangilash
+        if (selectedProdId && allProducts && allProducts.length) {
+          const p = allProducts.find(x => x.id === selectedProdId);
+          if (p) {
+            p.quantity = Math.max(0, (p.quantity || 0) - prodQty);
+            setLocalCache('dh_products', allProducts);
+            updateProductSelectOptions();
+            renderSettingsProducts();
+          }
+        }
 
         // 1. Optimistik yangilash: mijozlar ro'yxatini bo'shatmasdan darhol yangilaymiz (0ms kutish!)
         const newCustObj = {
@@ -3482,7 +3666,51 @@
         `;
       }
 
-      container.innerHTML = tabBarHtml + datePickerHtml + contentHtml;
+      // Ombordagi tovarlar qoldig'i hisoboti
+      let productsStatsHtml = '';
+      const prodList = (stats.products && stats.products.length) ? stats.products : (allProducts || []);
+      const prodSummary = stats.products_summary || {};
+      const totalItems = prodSummary.total_items !== undefined ? prodSummary.total_items : prodList.length;
+      const totalQty = prodSummary.total_quantity !== undefined ? prodSummary.total_quantity : prodList.reduce((acc, p) => acc + (p.quantity || 0), 0);
+      const totalVal = prodSummary.total_value !== undefined ? prodSummary.total_value : prodList.reduce((acc, p) => acc + ((p.quantity || 0) * (p.price || 0)), 0);
+
+      productsStatsHtml = `
+        <h4 class="section-title" style="margin:24px 0 10px;font-size:14px;display:flex;align-items:center;justify-content:space-between">
+          <span>📦 Ombordagi Tovarlar Qoldig'i</span>
+          <span style="font-size:12px;color:var(--text-muted);font-weight:600">${totalItems} xil / ${totalQty} ta</span>
+        </h4>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px;box-shadow:var(--shadow-sm)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--border)">
+            <span style="font-size:12px;color:var(--text-muted);font-weight:700">JAMI OMBOR QIYMATI</span>
+            <span style="font-size:15px;font-weight:800;color:var(--primary)">${formatMoney(totalVal)}</span>
+          </div>
+          ${prodList.length ? `
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${prodList.map(p => {
+                const qty = p.quantity !== undefined ? p.quantity : 0;
+                const isLow = qty <= 2;
+                return `
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-light)">
+                    <span style="font-weight:600;font-size:13px;color:var(--text-main)">📦 ${escHtml(p.name)}</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      ${p.price ? `<span style="font-size:11px;color:var(--text-muted)">${formatMoney(p.price)}</span>` : ''}
+                      <span class="badge ${isLow ? 'badge-overdue' : 'badge-active'}" style="font-weight:700;font-size:12px">
+                        ${qty} ta
+                      </span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : `
+            <div style="text-align:center;padding:10px;font-size:12px;color:var(--text-muted)">
+              Tovarlar hali kiritilmagan. Sozlamalar bo'limidan tovar qo'shishingiz mumkin.
+            </div>
+          `}
+        </div>
+      `;
+
+      container.innerHTML = tabBarHtml + datePickerHtml + contentHtml + productsStatsHtml;
     }
 
     // ============================================================
@@ -3749,6 +3977,11 @@
           renderCategoryPills();
           updateCategorySelectOptions();
         }
+        const cachedProdsData = getLocalCache('dh_products');
+        if (cachedProdsData && Array.isArray(cachedProdsData)) {
+          allProducts = cachedProdsData;
+          updateProductSelectOptions();
+        }
         const cachedCardData = getLocalCache('dh_card_data');
         if (cachedCardData) {
           populateCardSettings(cachedCardData);
@@ -3812,6 +4045,12 @@
             setLocalCache('dh_categories', me.categories);
             renderCategoryPills();
             updateCategorySelectOptions();
+          }
+          if (me.products) {
+            allProducts = me.products;
+            setLocalCache('dh_products', me.products);
+            updateProductSelectOptions();
+            renderSettingsProducts();
           }
           if (me.admin) {
             populateCardSettings(me.admin);
@@ -4343,6 +4582,254 @@
       });
     }
 
+    // ============================================================
+    // PRODUCTS (TOVARLAR / MAHSULOTLAR) MANAGEMENT
+    // ============================================================
+    async function loadProducts(force = false) {
+      if (!force && allProducts && allProducts.length > 0) {
+        renderSettingsProducts();
+        updateProductSelectOptions();
+        return;
+      }
+      try {
+        const res = await apiRequest(`/api/products/${shopData.shopId || '64EB6AB2'}`);
+        const prodsList = Array.isArray(res) ? res : (res?.products || []);
+        if (prodsList && prodsList.length >= 0) {
+          allProducts = prodsList;
+          setLocalCache('dh_products', prodsList);
+          renderSettingsProducts();
+          updateProductSelectOptions();
+        }
+      } catch (e) {
+        console.error('Tovarlarni yuklashda xatolik:', e);
+      }
+    }
+
+    function renderSettingsProducts() {
+      const container = document.getElementById('settingsProductsList');
+      if (!container) return;
+
+      if (!allProducts || allProducts.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:13px; background:var(--bg-app); border-radius:10px; border:1px dashed var(--border);">
+            Hozircha hech qanday tovar qo'shilmagan. Yuqoridagi formadan yangi tovar (masalan: Sapok, 30 ta) qo'shishingiz mumkin.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = allProducts.map(p => {
+        const pId = p.id;
+        const pName = p.name || 'Tovar';
+        const pQty = p.quantity !== undefined ? p.quantity : 0;
+        const pPrice = p.price ? formatMoney(p.price) : '';
+        const isOut = pQty <= 0;
+
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px 14px; border:1px solid var(--border); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+              <span style="font-size:18px;">📦</span>
+              <div style="min-width:0; overflow:hidden;">
+                <div style="font-weight:700; color:var(--text-main); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${escHtml(pName)}
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">
+                  ${pPrice ? `${pPrice} • ` : ''}Qoldiq: <b style="color:${isOut ? 'var(--danger)' : 'var(--primary)'}">${pQty} ta</b>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button onclick="quickUpdateStock(${pId}, -1)" style="width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--bg-app); font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="1 taga kamaytirish">-</button>
+              <span style="font-weight:800; font-size:13px; min-width:28px; text-align:center; color:${isOut ? 'var(--danger)' : 'var(--text-main)'}">${pQty}</span>
+              <button onclick="quickUpdateStock(${pId}, 1)" style="width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--bg-app); font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="1 taga oshirish">+</button>
+              <button onclick="deleteProductItem(${pId}, '${escHtml(pName)}')" style="background:none; border:none; color:var(--danger); cursor:pointer; padding:6px; border-radius:6px; display:flex; align-items:center; justify-content:center; margin-left:4px;" title="O'chirish">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function addNewProductFromSettings() {
+      const nameEl = document.getElementById('inp-new-prod-name');
+      const qtyEl = document.getElementById('inp-new-prod-qty');
+      const priceEl = document.getElementById('inp-new-prod-price');
+      if (!nameEl) return;
+
+      const name = nameEl.value.trim();
+      const qty = parseInt(qtyEl ? qtyEl.value : '0') || 0;
+      const price = priceEl ? parseFormattedNumber(priceEl.value) : 0;
+
+      if (!name) {
+        showToast('Tovar nomini kiriting (masalan: Sapok)', 'warning');
+        return;
+      }
+
+      showTopLoader();
+      try {
+        const res = await apiRequest('/api/products/add', 'POST', {
+          shop_id: shopData.shopId || '64EB6AB2',
+          name: name,
+          quantity: qty,
+          price: price
+        });
+        nameEl.value = '';
+        if (qtyEl) qtyEl.value = '10';
+        if (priceEl) priceEl.value = '';
+        haptic('notification', 'success');
+        showToast(`"${name}" (${qty} ta) tovari qo'shildi!`, 'success');
+        if (res.products) {
+          allProducts = res.products;
+        } else if (res.product) {
+          allProducts.unshift(res.product);
+        }
+        setLocalCache('dh_products', allProducts);
+        renderSettingsProducts();
+        updateProductSelectOptions();
+        loadDashboard(true);
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    async function quickUpdateStock(id, delta) {
+      const p = (allProducts || []).find(x => x.id === id);
+      if (!p) return;
+      const newQty = Math.max(0, (p.quantity || 0) + delta);
+      p.quantity = newQty;
+      renderSettingsProducts();
+      updateProductSelectOptions();
+      haptic('impact', 'light');
+
+      try {
+        const res = await apiRequest(`/api/products/${id}/update`, 'POST', {
+          quantity: newQty,
+          delta: delta
+        });
+        if (res.products) {
+          allProducts = res.products;
+          setLocalCache('dh_products', allProducts);
+          renderSettingsProducts();
+          updateProductSelectOptions();
+        }
+      } catch (err) {
+        console.error('quickUpdateStock xatosi:', err);
+      }
+    }
+
+    async function deleteProductItem(id, name) {
+      const ok = confirm(`"${name}" tovarini o'chirishni xohlaysizmi?`);
+      if (!ok) return;
+
+      showTopLoader();
+      try {
+        const res = await apiRequest(`/api/products/${id}/delete`, 'POST', {});
+        haptic('notification', 'success');
+        showToast(`"${name}" tovari o'chirildi!`, 'success');
+        if (res.products) {
+          allProducts = res.products;
+        } else {
+          allProducts = allProducts.filter(x => x.id !== id);
+        }
+        setLocalCache('dh_products', allProducts);
+        renderSettingsProducts();
+        updateProductSelectOptions();
+        loadDashboard(true);
+      } catch (err) {
+        haptic('notification', 'error');
+        showToast(err.message, 'error');
+      } finally {
+        hideTopLoader();
+      }
+    }
+
+    function updateProductSelectOptions() {
+      const selects = [
+        document.getElementById('inp-product-select'),
+        document.getElementById('inp-adddebt-product-select')
+      ];
+
+      selects.forEach(sel => {
+        if (!sel) return;
+        const curVal = sel.value;
+        let html = '<option value="">-- Tovarni tanlang (yoki qo\'lda yozish) --</option>';
+        if (allProducts && allProducts.length > 0) {
+          allProducts.forEach(p => {
+            const pQty = p.quantity !== undefined ? p.quantity : 0;
+            const pPrice = p.price ? ` - ${formatMoney(p.price)}` : '';
+            html += `<option value="${p.id}" data-price="${p.price || 0}" data-stock="${pQty}" data-name="${escHtml(p.name)}">📦 ${escHtml(p.name)} (Qoldiq: ${pQty} ta${pPrice})</option>`;
+          });
+        }
+        html += '<option value="manual">✍️ Boshqa (qo\'lda kiritish)</option>';
+        sel.innerHTML = html;
+        if (curVal) sel.value = curVal;
+      });
+    }
+
+    function onProductSelectChanged(formType) {
+      const prefix = formType === 'adddebt' ? 'inp-adddebt-' : 'inp-';
+      const selEl = document.getElementById(prefix + 'product-select');
+      const qtyWrap = document.getElementById(prefix + 'product-qty-wrap');
+      const descEl = document.getElementById(prefix + 'desc');
+      const amountEl = document.getElementById(prefix + 'amount');
+      const qtyInput = document.getElementById(prefix + 'product-qty');
+      const stockInfo = document.getElementById(prefix + 'product-stock-info');
+
+      if (!selEl) return;
+      const val = selEl.value;
+      if (!val || val === 'manual') {
+        if (qtyWrap) qtyWrap.style.display = 'none';
+        if (stockInfo) stockInfo.style.display = 'none';
+        return;
+      }
+
+      const pId = parseInt(val);
+      const prod = (allProducts || []).find(p => p.id === pId);
+      if (!prod) return;
+
+      if (qtyWrap) qtyWrap.style.display = 'flex';
+      if (stockInfo) {
+        stockInfo.style.display = 'block';
+        updateProductStockPreview(formType);
+      }
+
+      const qty = parseInt(qtyInput ? qtyInput.value : '1') || 1;
+      if (descEl) {
+        descEl.value = `${prod.name} (${qty} ta)`;
+      }
+      if (prod.price && prod.price > 0 && amountEl) {
+        amountEl.value = formatNumberWithSpaces(prod.price * qty);
+      }
+    }
+
+    function changeProductFormQty(formType, delta) {
+      const prefix = formType === 'adddebt' ? 'inp-adddebt-' : 'inp-';
+      const qtyInput = document.getElementById(prefix + 'product-qty');
+      if (!qtyInput) return;
+      let cur = parseInt(qtyInput.value) || 1;
+      cur = Math.max(1, cur + delta);
+      qtyInput.value = cur;
+      onProductSelectChanged(formType);
+    }
+
+    function updateProductStockPreview(formType) {
+      const prefix = formType === 'adddebt' ? 'inp-adddebt-' : 'inp-';
+      const selEl = document.getElementById(prefix + 'product-select');
+      const qtyInput = document.getElementById(prefix + 'product-qty');
+      const stockInfo = document.getElementById(prefix + 'product-stock-info');
+      if (!selEl || !stockInfo) return;
+      const pId = parseInt(selEl.value);
+      const prod = (allProducts || []).find(p => p.id === pId);
+      if (!prod) return;
+      const qty = parseInt(qtyInput ? qtyInput.value : '1') || 1;
+      const rem = Math.max(0, (prod.quantity || 0) - qty);
+      stockInfo.innerHTML = `📦 Omborda: <b>${prod.quantity || 0} ta</b> &rarr; Xariddan so'ng qoladi: <b style="color:${rem === 0 ? 'var(--danger)' : 'var(--primary)'}">${rem} ta</b>`;
+    }
+
     function loadSettings() {
       const cachedCard = getLocalCache('dh_card_data');
       if (cachedCard) {
@@ -4350,12 +4837,15 @@
       }
       renderSettingsCategories();
       loadCategories();
+      renderSettingsProducts();
+      loadProducts();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       setupAmountFormatter('inp-amount');
       setupAmountFormatter('inp-pay-amount');
       setupAmountFormatter('inp-adddebt-amount');
+      setupAmountFormatter('inp-new-prod-price');
       setupPhoneFormatter('inp-phone');
       setupPhoneFormatter('inp-edit-phone');
       checkAuthAndBoot();
@@ -4460,14 +4950,34 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Nima olingan (Mahsulot) <span style="font-weight:400;color:var(--text-light);font-size:12px">(ixtiyoriy)</span></label>
+          <label class="form-label">Nima olingan (Tovar / Mahsulot)</label>
           <div class="input-box">
             <span class="input-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               </svg>
             </span>
-            <input type="text" class="custom-input" id="inp-adddebt-desc" placeholder="Masalan: 2 qop un (ixtiyoriy)">
+            <select class="custom-input" id="inp-adddebt-product-select" onchange="onProductSelectChanged('adddebt')" style="cursor:pointer">
+              <option value="">-- Tovarni tanlang (yoki qo'lda yozish) --</option>
+              <option value="manual">✍️ Boshqa (qo'lda kiritish)</option>
+            </select>
+          </div>
+
+          <div id="inp-adddebt-product-qty-wrap" style="display:none; align-items:center; justify-content:space-between; background:var(--bg-app); border:1px solid var(--border); border-radius:10px; padding:8px 12px; margin-top:8px;">
+            <span style="font-size:13px; font-weight:700; color:var(--text-main);">Nechta oldi (Soni):</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button type="button" onclick="changeProductFormQty('adddebt', -1)" style="width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); font-weight:800; font-size:16px; cursor:pointer;">-</button>
+              <input type="number" id="inp-adddebt-product-qty" value="1" min="1" max="9999" oninput="onProductSelectChanged('adddebt')" style="width:50px; text-align:center; font-weight:800; font-size:15px; border:1px solid var(--border); border-radius:6px; padding:4px;">
+              <button type="button" onclick="changeProductFormQty('adddebt', 1)" style="width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); font-weight:800; font-size:16px; cursor:pointer;">+</button>
+            </div>
+          </div>
+          <div id="inp-adddebt-product-stock-info" style="display:none; font-size:11.5px; margin-top:6px; padding:6px 10px; border-radius:6px; background:var(--bg-app); border:1px solid var(--border); color:var(--text-muted);"></div>
+
+          <div class="input-box" style="margin-top:8px;">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </span>
+            <input type="text" class="custom-input" id="inp-adddebt-desc" placeholder="Tavsif yoki qo'lda mahsulot nomi">
           </div>
           <div class="field-error" id="err-adddebt-desc"></div>
         </div>
