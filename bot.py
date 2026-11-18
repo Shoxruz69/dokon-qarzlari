@@ -117,8 +117,8 @@ async def setup_bot_commands(bot: Bot):
             )
         )
 
-        # 2. Asosiy Admin (7370403444) uchun Do'kon Paneli
-        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=2.7"
+        # 2. Asosiy Adminlar (7370403444 va 6876312568) uchun Do'kon Paneli
+        admin_url = f"{base_url}/?role=admin&shop_id=64EB6AB2&v=3.8"
         for aid in settings.get_admin_ids():
             try:
                 await bot.set_chat_menu_button(
@@ -130,18 +130,6 @@ async def setup_bot_commands(bot: Bot):
                 )
             except Exception:
                 pass
-
-        # 3. 6876312568 uchun alohida Mijoz menyusi
-        try:
-            await bot.set_chat_menu_button(
-                chat_id=6876312568,
-                menu_button=MenuButtonWebApp(
-                    text="Mening qarzlarim",
-                    web_app=WebAppInfo(url=customer_url)
-                )
-            )
-        except Exception:
-            pass
 
         logger.info("✅ Bot komandalari va Menu tugmalari (Admin va Mijoz) muvaffaqiyatli o'rnatildi")
     except Exception as e:

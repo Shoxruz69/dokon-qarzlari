@@ -42,21 +42,21 @@ req2 = urllib.request.Request(
 res2 = urllib.request.urlopen(req2)
 print("Admin (G'iyos - 7370403444) Menu Button:", json.loads(res2.read().decode("utf-8")))
 
-# 3. 6876312568 uchun tugmani majburiy 'Mening qarzlarim' (Mijoz) ga o'zgartirish:
-reset_data = {
+# 3. Admin (Shoxruz - 6876312568) uchun Do'kon Paneli menyusi:
+admin_data_6876 = {
     "chat_id": 6876312568,
     "menu_button": {
         "type": "web_app",
-        "text": "Mening qarzlarim",
+        "text": "Do'kon Paneli",
         "web_app": {
-            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=3.5"
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=3.8"
         }
     }
 }
 req3 = urllib.request.Request(
     f"https://api.telegram.org/bot{token}/setChatMenuButton",
-    data=json.dumps(reset_data).encode("utf-8"),
+    data=json.dumps(admin_data_6876).encode("utf-8"),
     headers={"Content-Type": "application/json"}
 )
 res3 = urllib.request.urlopen(req3)
-print("6876312568 Set Customer Menu Button:", json.loads(res3.read().decode("utf-8")))
+print("Admin (Shoxruz - 6876312568) Set Admin Menu Button:", json.loads(res3.read().decode("utf-8")))

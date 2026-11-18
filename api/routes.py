@@ -522,22 +522,6 @@ async def handle_get_me(request: web.Request):
     # 2. Telegram user ID orqali aniqlash
     if user_id_str and user_id_str.isdigit():
         uid = int(user_id_str)
-        if uid == 6876312568:
-            # 6876312568 ID si har qanday holatda faqat mijoz bo'lib ochiladi
-            custs = await get_customer_by_telegram_id(uid)
-            if custs:
-                cust = custs[0]
-                debts = await get_customer_all_debts(cust["id"])
-                return web.json_response({
-                    "role": "customer",
-                    "customer": cust,
-                    "debts": debts
-                })
-            return web.json_response({
-                "role": "customer",
-                "customer": None,
-                "debts": []
-            })
         
         # Admin tekshiruvi: settings.is_admin_id(uid)
         admin = await get_admin_by_telegram_id(uid) if settings.is_admin_id(uid) else None

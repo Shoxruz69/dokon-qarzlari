@@ -163,12 +163,12 @@ async def run_tests():
     assert me_7370["role"] == "admin", f"Xato: 7370403444 admin bo'lmadi: {me_7370}"
     print("✅ REST API: 7370403444 admin huquqiga ega ekanligi tasdiqlandi!")
 
-    # 6876312568 foydalanuvchi admin emasligi (customer) tasdiqlash
+    # 6876312568 foydalanuvchi to'laqonli admin bo'lishini tekshirish
     res_6876 = await client.get("/api/me?user_id=6876312568")
     assert res_6876.status == 200
     me_6876 = await res_6876.json()
-    assert me_6876["role"] == "customer", f"Xato: 6876312568 customer bo'lmadi: {me_6876}"
-    print("✅ REST API: 6876312568 adminlikdan chiqarilgani (customer bo'lgani) tasdiqlandi!")
+    assert me_6876["role"] == "admin", f"Xato: 6876312568 admin bo'lmadi: {me_6876}"
+    print("✅ REST API: 6876312568 admin huquqiga ega ekanligi tasdiqlandi!")
 
     # Begona mijoz faqat customer bo'lishini tekshirish
     res_guest = await client.get("/api/me?user_id=999888777")
