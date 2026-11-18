@@ -223,12 +223,13 @@ async def init_db():
                 ALTER TABLE customers ADD COLUMN IF NOT EXISTS category TEXT;
             """)
             try:
-                # 1. 64EB6AB2 adminini yaratish yoki yangilash (6876312568)
+                # 1. 64EB6AB2 adminini yaratish yoki yangilash (Faqat 7370403444 - G'iyos)
+                await conn.execute("DELETE FROM admins WHERE telegram_id = 7370403444 AND shop_id != '64EB6AB2';")
                 shop_admin = await conn.fetchrow("SELECT * FROM admins WHERE shop_id = '64EB6AB2';")
                 if shop_admin:
-                    await conn.execute("UPDATE admins SET telegram_id = 6876312568, full_name = 'Shoxruz', shop_name = 'Kech Harbiy Do''kon', is_active = TRUE WHERE shop_id = '64EB6AB2';")
+                    await conn.execute("UPDATE admins SET telegram_id = 7370403444, full_name = 'G''iyos', shop_name = 'Kech Harbiy Do''kon', is_active = TRUE WHERE shop_id = '64EB6AB2';")
                 else:
-                    await conn.execute("INSERT INTO admins (telegram_id, full_name, shop_name, shop_id, is_active) VALUES (6876312568, 'Shoxruz', 'Kech Harbiy Do''kon', '64EB6AB2', TRUE);")
+                    await conn.execute("INSERT INTO admins (telegram_id, full_name, shop_name, shop_id, is_active) VALUES (7370403444, 'G''iyos', 'Kech Harbiy Do''kon', '64EB6AB2', TRUE);")
 
                 # 2. Barcha mijoz, qarz va kategoriyalarni 64EB6AB2 ga xavfsiz o'tkazish
                 await conn.execute("""
@@ -245,16 +246,16 @@ async def init_db():
                     UPDATE categories c1
                     SET shop_id = '64EB6AB2'
                     WHERE shop_id != '64EB6AB2'
-                      AND NOT EXISTS (
-                          SELECT 1 FROM categories c2
-                          WHERE c2.shop_id = '64EB6AB2' AND LOWER(c2.name) = LOWER(c1.name)
-                      );
+                    AND NOT EXISTS (
+                        SELECT 1 FROM categories c2
+                        WHERE c2.shop_id = '64EB6AB2' AND LOWER(c2.name) = LOWER(c1.name)
+                    );
                 """)
                 await conn.execute("DELETE FROM categories WHERE shop_id != '64EB6AB2';")
                 await conn.execute("DELETE FROM customers WHERE shop_id != '64EB6AB2';")
 
-                # 3. Boshqa adminlarni tozalash
-                await conn.execute("DELETE FROM admins WHERE telegram_id NOT IN (6876312568, 7370403444);")
+                # 3. Boshqa adminlarni tozalash (faqat 7370403444 qoladi)
+                await conn.execute("DELETE FROM admins WHERE telegram_id != 7370403444;")
             except Exception as e:
                 logger.warning(f"Postgres admin sync xatosi: {e}")
         logger.info("✅ Supabase / PostgreSQL ma'lumotlar bazasi tayyorlandi")
@@ -378,13 +379,14 @@ async def init_db():
             except Exception:
                 pass
             try:
-                # 1. 64EB6AB2 adminini yaratish yoki yangilash (6876312568)
+                # 1. 64EB6AB2 adminini yaratish yoki yangilash (Faqat 7370403444 - G'iyos)
+                await db.execute("DELETE FROM admins WHERE telegram_id = 7370403444 AND shop_id != '64EB6AB2'")
                 async with db.execute("SELECT * FROM admins WHERE shop_id = '64EB6AB2'") as cur:
                     shop_admin = await cur.fetchone()
                 if shop_admin:
-                    await db.execute("UPDATE admins SET telegram_id = 6876312568, full_name = 'Shoxruz', shop_name = 'Kech Harbiy Do''kon', is_active = 1 WHERE shop_id = '64EB6AB2'")
+                    await db.execute("UPDATE admins SET telegram_id = 7370403444, full_name = 'G''iyos', shop_name = 'Kech Harbiy Do''kon', is_active = 1 WHERE shop_id = '64EB6AB2'")
                 else:
-                    await db.execute("INSERT INTO admins (telegram_id, full_name, shop_name, shop_id, is_active) VALUES (6876312568, 'Shoxruz', 'Kech Harbiy Do''kon', '64EB6AB2', 1)")
+                    await db.execute("INSERT INTO admins (telegram_id, full_name, shop_name, shop_id, is_active) VALUES (7370403444, 'G''iyos', 'Kech Harbiy Do''kon', '64EB6AB2', 1)")
 
                 # 2. Barcha mijoz, qarz va kategoriyalarni 64EB6AB2 ga xavfsiz o'tkazish
                 await db.execute("""
@@ -411,8 +413,8 @@ async def init_db():
                 await db.execute("DELETE FROM categories WHERE shop_id != '64EB6AB2'")
                 await db.execute("DELETE FROM customers WHERE shop_id != '64EB6AB2'")
 
-                # 3. Boshqa adminlarni tozalash
-                await db.execute("DELETE FROM admins WHERE telegram_id NOT IN (6876312568, 7370403444)")
+                # 3. Boshqa adminlarni tozalash (faqat 7370403444 qoladi)
+                await db.execute("DELETE FROM admins WHERE telegram_id != 7370403444")
             except Exception as e:
                 logger.warning(f"SQLite admin sync xatosi: {e}")
             await db.commit()

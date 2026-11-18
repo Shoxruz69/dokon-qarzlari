@@ -116,7 +116,7 @@ async def setup_bot_commands(bot: Bot):
             )
         )
 
-        # 2. Asosiy Adminlar (6876312568 va 7370403444) uchun Do'kon Paneli
+        # 2. Asosiy Admin (7370403444) uchun Do'kon Paneli
         admin_url = "https://dokon-qarzlari-wf96.onrender.com/?role=admin&shop_id=64EB6AB2&v=2.6"
         for aid in settings.get_admin_ids():
             try:

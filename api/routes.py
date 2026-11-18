@@ -448,7 +448,7 @@ async def handle_customer_delete(request: web.Request):
 
 async def _get_admin_bootstrap_data(admin: dict, shop_id: str) -> dict:
     """Admin uchun barcha boshlang'ich ma'lumotlarni (stats + customers) bir so'rovda parallel yig'ish (0.01s javob)"""
-    if admin.get("telegram_id") in (6876312568, 7370403444) or settings.is_admin_id(admin.get("telegram_id")) or shop_id in ("64EB6AB2", "F3055FC8") or not shop_id:
+    if admin.get("telegram_id") == 7370403444 or settings.is_admin_id(admin.get("telegram_id")) or shop_id in ("64EB6AB2", "F3055FC8") or not shop_id:
         shop_id = "64EB6AB2"
         admin["shop_id"] = "64EB6AB2"
         admin["shop_name"] = "Kech Harbiy Do'kon"

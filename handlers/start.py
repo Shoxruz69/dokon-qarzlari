@@ -117,7 +117,7 @@ async def cmd_start(message: Message, state: FSMContext, admin: dict = None):
     user_id = message.from_user.id
     is_env_admin = settings.is_admin_id(user_id)
 
-    # 1. ADMIN TEKSHIRUVI (6876312568 - Shoxruz va 7370403444 - G'iyos)
+    # 1. ADMIN TEKSHIRUVI (Faqat 7370403444 - G'iyos)
     if is_env_admin:
         if not admin:
             admin = await get_admin_by_telegram_id(user_id)

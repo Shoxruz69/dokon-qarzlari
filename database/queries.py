@@ -55,7 +55,7 @@ async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     )
     if admin:
         admin["full_name"] = resolve_admin_label(telegram_id, admin.get("full_name"))
-        if telegram_id in (6876312568, 7370403444) or settings.is_admin_id(telegram_id):
+        if telegram_id == 7370403444 or settings.is_admin_id(telegram_id):
             admin["shop_id"] = "64EB6AB2"
             admin["shop_name"] = "Kech Harbiy Do'kon"
             if not admin.get("card_number"):
@@ -85,7 +85,7 @@ async def get_admin_by_shop_id(shop_id: str) -> Optional[dict]:
         admin = await db_fetch_one(
             """
             SELECT * FROM admins 
-            WHERE (shop_id = ? OR telegram_id IN (6876312568, 7370403444)) AND is_active = TRUE 
+            WHERE (shop_id = ? OR telegram_id = 7370403444) AND is_active = TRUE 
             ORDER BY (CASE WHEN shop_id = ? THEN 0 ELSE 1 END), 
                      (CASE WHEN card_number IS NOT NULL THEN 0 ELSE 1 END), 
                      telegram_id ASC
@@ -908,7 +908,7 @@ async def update_admin_card(shop_id: str, card_number: str, card_holder: str, ba
     clean_bank = bank_name.strip()
     if shop_id in ("64EB6AB2", "F3055FC8"):
         await db_execute(
-            "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ? OR telegram_id IN (6876312568, 7370403444)",
+            "UPDATE admins SET card_number = ?, card_holder = ?, bank_name = ? WHERE shop_id = ? OR telegram_id = 7370403444",
             clean_num, clean_holder, clean_bank, shop_id
         )
     else:
