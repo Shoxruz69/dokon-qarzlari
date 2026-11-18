@@ -414,7 +414,9 @@ async def init_db():
                 await db.execute("DELETE FROM customers WHERE shop_id != '64EB6AB2'")
 
                 # 3. Boshqa adminlarni tozalash (faqat 7370403444 qoladi)
+                await db.execute("PRAGMA foreign_keys = OFF;")
                 await db.execute("DELETE FROM admins WHERE telegram_id != 7370403444")
+                await db.execute("PRAGMA foreign_keys = ON;")
             except Exception as e:
                 logger.warning(f"SQLite admin sync xatosi: {e}")
             await db.commit()

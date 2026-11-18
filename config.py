@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "9106358155:AAHNO_Uk3IzBP4sqVdB9dgNJ0mrIPb24yec")
     ADMIN_TELEGRAM_ID: Union[int, str] = 7370403444
     MINI_APP_URL: str = "https://dokon-qarzlari-wf96.onrender.com"
-    DATABASE_URL: str = ""
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_6vTKVPerqcz2@ep-divine-dawn-b3gyv6oc-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require")
     ADMIN_SECRET_CODE: str = "DOKON2025"
     TIMEZONE: str = "Asia/Tashkent"
     WEB_SERVER_HOST: str = "0.0.0.0"
