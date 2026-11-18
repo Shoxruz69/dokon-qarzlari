@@ -204,9 +204,9 @@ async def main():
     await site.start()
     logger.info(f"🌐 Mini App va REST API serveri ishga tushdi: http://localhost:{settings.WEB_SERVER_PORT}")
 
-    # 6. Cloudflare HTTPS tunnelni tekshirish / faollashtirish (Mini App Telegramda ishlashi uchun)
+    # 6. Cloudflare HTTPS tunnelni tekshirish / faollashtirish (faqat lokal ishlab chiqish uchun)
     tunnel_url = await start_cloudflare_tunnel(settings.WEB_SERVER_PORT)
-    if tunnel_url:
+    if tunnel_url and ("localhost" in settings.MINI_APP_URL or "127.0.0.1" in settings.MINI_APP_URL):
         settings.MINI_APP_URL = tunnel_url
 
     # 7. Komandalarni Telegramga yozish
