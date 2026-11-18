@@ -29,6 +29,12 @@ async def get_pg_pool() -> asyncpg.Pool:
             raise RuntimeError("Veral Market bazasiga ulanish butunlay taqiqlangan!")
         if db_url.startswith("postgres://"):
             db_url = "postgresql://" + db_url[len("postgres://"):]
+        
+        # asyncpg uchun channel_binding parametrini tozalash (libpq maxsus parametri)
+        db_url = re.sub(r"[?&]channel_binding=[^&]+", "", db_url)
+        if "?" not in db_url and "&" in db_url:
+            db_url = db_url.replace("&", "?", 1)
+
         _pg_pool = await asyncpg.create_pool(
             db_url,
             min_size=2,

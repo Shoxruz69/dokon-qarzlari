@@ -219,11 +219,23 @@ async def main():
 
     # 9. Bot pollingni boshlash
     asyncio.create_task(keep_alive_task())
-    await bot.delete_webhook(drop_pending_updates=True)
-    logger.info("🤖 Bot xabarlarni qabul qilishga tayyor!")
-
     try:
-        await dp.start_polling(bot)
+        await bot.delete_webhook(drop_pending_updates=False)
+    except Exception as e:
+        logger.warning(f"⚠️ Webhook tozalashda ogohlantirish: {e}")
+
+    logger.info("🤖 Bot va Web Server to'liq tayyor!")
+    try:
+        while True:
+            try:
+                logger.info("🤖 Bot polling boshlanmoqda...")
+                await dp.start_polling(bot)
+                break
+            except (KeyboardInterrupt, SystemExit):
+                break
+            except Exception as e:
+                logger.error(f"⚠️ Polling xatoligi yuz berdi: {e}. 5 soniyadan so'ng qayta ulaniladi...")
+                await asyncio.sleep(5)
     finally:
         logger.info("🛑 Tizim to'xtatilmoqda...")
         scheduler.shutdown()
