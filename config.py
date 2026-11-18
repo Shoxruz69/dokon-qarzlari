@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional, List, Union
 
 class Settings(BaseSettings):
-    BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
+    BOT_TOKEN: str = os.getenv("BOT_TOKEN", "9106358155:AAHNO_Uk3IzBP4sqVdB9dgNJ0mrIPb24yec")
     ADMIN_TELEGRAM_ID: Union[int, str] = 7370403444
     MINI_APP_URL: str = "https://dokon-qarzlari-wf96.onrender.com"
     DATABASE_URL: str = ""
