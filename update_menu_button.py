@@ -1,7 +1,9 @@
 import urllib.request
 import json
+import os
+from config import settings
 
-token = "9106358155:AAFkdpl8Yi3wsspZa3CdSpCeYJURlkpodqc"
+token = settings.BOT_TOKEN or os.getenv("BOT_TOKEN", "")
 
 # 1. Barcha oddiy foydalanuvchilar (mijozlar) uchun pastki menyu:
 default_data = {
