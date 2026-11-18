@@ -3663,9 +3663,20 @@
     // ============================================================
     async function checkAuthAndBoot() {
       const urlParams = new URLSearchParams(window.location.search);
-      const paramRole = urlParams.get('role');
+      let paramRole = urlParams.get('role');
       const paramCustId = urlParams.get('customer_id');
       const nav = document.getElementById('bottomNav');
+
+      // 0. Agar 7370403444 bo'lmagan har qanday foydalanuvchi bo'lsa (masalan 6876312568),
+      // admin keshlarini tozalaymiz va majburiy faqat mijoz roliga o'tkazamiz!
+      const currentTgUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : null;
+      if (currentTgUserId && currentTgUserId !== '7370403444') {
+        localStorage.removeItem('dh_user_me');
+        localStorage.removeItem('dh_stats');
+        localStorage.removeItem('dh_customers');
+        localStorage.removeItem('dh_categories');
+        paramRole = 'customer';
+      }
 
       // 1. Agar role=customer bo'lsa darhol bottomNav yashirilsin
       if (paramRole === 'customer') {

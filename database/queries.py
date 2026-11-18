@@ -49,6 +49,8 @@ def resolve_admin_label(admin_id: Optional[int], custom_name: Optional[str] = No
 
 async def get_admin_by_telegram_id(telegram_id: int) -> Optional[dict]:
     """Adminni telegram_id bo'yicha olish"""
+    if telegram_id == 6876312568:
+        return None
     admin = await db_fetch_one(
         "SELECT * FROM admins WHERE telegram_id = ? AND is_active = TRUE",
         telegram_id
@@ -116,8 +118,10 @@ async def get_first_active_admin() -> Optional[dict]:
     )
 
 async def create_admin(telegram_id: int, full_name: str, 
-                       shop_name: str, username: str = None, phone: str = None) -> dict:
+                       shop_name: str, username: str = None, phone: str = None) -> Optional[dict]:
     """Yangi admin yaratish"""
+    if telegram_id == 6876312568:
+        return None
     existing_64 = await db_fetch_one("SELECT id, telegram_id FROM admins WHERE shop_id = '64EB6AB2'")
     if not existing_64 or (existing_64 and existing_64["telegram_id"] == telegram_id):
         shop_id = "64EB6AB2"

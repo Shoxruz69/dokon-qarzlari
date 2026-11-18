@@ -40,11 +40,15 @@ req2 = urllib.request.Request(
 res2 = urllib.request.urlopen(req2)
 print("Admin (G'iyos - 7370403444) Menu Button:", json.loads(res2.read().decode("utf-8")))
 
-# 3. 6876312568 uchun adminlik tugmasini bekor qilish va standart mijoz tugmasiga qaytarish:
+# 3. 6876312568 uchun tugmani majburiy 'Mening qarzlarim' (Mijoz) ga o'zgartirish:
 reset_data = {
     "chat_id": 6876312568,
     "menu_button": {
-        "type": "default"
+        "type": "web_app",
+        "text": "Mening qarzlarim",
+        "web_app": {
+            "url": "https://dokon-qarzlari-wf96.onrender.com/?role=customer&shop_id=64EB6AB2&v=3.5"
+        }
     }
 }
 req3 = urllib.request.Request(
@@ -53,4 +57,4 @@ req3 = urllib.request.Request(
     headers={"Content-Type": "application/json"}
 )
 res3 = urllib.request.urlopen(req3)
-print("6876312568 Reset Menu Button (default customer):", json.loads(res3.read().decode("utf-8")))
+print("6876312568 Set Customer Menu Button:", json.loads(res3.read().decode("utf-8")))

