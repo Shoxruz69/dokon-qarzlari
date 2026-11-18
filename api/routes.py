@@ -635,6 +635,7 @@ async def handle_health(request: web.Request):
         "status": "ok",
         "service": "dokon-qarzlari",
         "shop_id": "64EB6AB2",
+        "version": "v3.1.0",
         "uptime": time.time()
     })
 
