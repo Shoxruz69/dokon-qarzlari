@@ -203,7 +203,7 @@ async def main():
     # 8. Eslatmalar schedulerini ishga tushirish
     scheduler = setup_scheduler(bot)
     scheduler.start()
-    logger.info("⏰ Kunlik eslatmalar scheduleri faollashtirildi (19:00)")
+    logger.info("⏰ Oylik qarz eslatmalari scheduleri faollashtirildi (Har oyning 1-sanasida 18:00)")
 
     # 9. Bot pollingni boshlash
     asyncio.create_task(keep_alive_task())

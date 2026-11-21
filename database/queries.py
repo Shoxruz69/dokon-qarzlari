@@ -533,8 +533,8 @@ async def get_customer_active_debts(customer_id: int) -> List[dict]:
 _last_overdue_check: float = 0.0
 
 async def update_overdue_statuses() -> int:
-    """To'lov muddati 3 kundan oshgan (3 kundan beri to'lamagan) qarzlarni 
-    avtomatik 'overdue' holatiga o'tkazish, 3 kundan kam bo'lsa 'active' holatda saqlash"""
+    """To'lov muddati o'tgan (belgilangan muddatdan kechikkan) qarzlarni 
+    avtomatik 'overdue' holatiga o'tkazish, muddati kelmaganlarini 'active' holatda saqlash"""
     global _last_overdue_check
     now = time.time()
     # Har 15 daqiqada faqat 1 marta yangilanadi (har bir sahifa yuklanganda 2 ta UPDATE so'rovini oldini olib, tezlikni 0.3s ga tushirish uchun)
@@ -542,18 +542,18 @@ async def update_overdue_statuses() -> int:
         return 0
     _last_overdue_check = now
 
-    cutoff = date.today() - timedelta(days=3)
+    today = date.today()
     try:
         await db_execute("""
             UPDATE debts 
             SET status = 'overdue', updated_at = CURRENT_TIMESTAMP
-            WHERE due_date <= ? AND status = 'active'
-        """, cutoff)
+            WHERE due_date < ? AND status = 'active'
+        """, today)
         await db_execute("""
             UPDATE debts 
             SET status = 'active', updated_at = CURRENT_TIMESTAMP
-            WHERE due_date > ? AND status = 'overdue'
-        """, cutoff)
+            WHERE due_date >= ? AND status = 'overdue'
+        """, today)
     except Exception as e:
         logger.warning(f"update_overdue_statuses xatosi: {e}")
     return 1

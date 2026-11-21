@@ -22,7 +22,7 @@ from utils.formatters import esc
 logger = logging.getLogger(__name__)
 
 def build_daily_reminder_text(cust: dict, days_overdue: int = 0) -> str:
-    """Qarzdor mijoz uchun 19:00 eslatma matni"""
+    """Qarzdor mijoz uchun oylik eslatma matni (1 oyda 1 marta)"""
     total_str = format_amount(cust["total_debt"])
     shop_name = esc(cust.get("shop_name") or "Do'kon")
     name = esc(cust["full_name"])
@@ -37,7 +37,7 @@ def build_daily_reminder_text(cust: dict, days_overdue: int = 0) -> str:
         desc = esc(d.get("description") or "Nasiya savdo")
         if d.get("status") == "overdue":
             has_overdue = True
-            badge = "⚠️ (3 kundan beri to'lanmagan)"
+            badge = "⚠️ (Muddati o'tgan)"
         else:
             badge = f"(Muddat: {due})"
         debts_lines.append(f"  • <b>{desc}</b>: {amt} {badge}")
@@ -49,18 +49,18 @@ def build_daily_reminder_text(cust: dict, days_overdue: int = 0) -> str:
     admin_phone = cust.get("admin_phone")
     phone_line = f"\n📞 <b>Do'kon telefoni:</b> <code>{esc(admin_phone)}</code>" if admin_phone else ""
     
-    if days_overdue >= 3:
-        overdue_warning = f"\n⚠️ <b>Diqqat: Qarzingiz to'lov muddati {days_overdue} kundan beri kechikmoqda!</b> Iltimos, qarzingizni imkon qadar tezroq to'lashingizni so'raymiz."
+    if days_overdue >= 30:
+        overdue_warning = f"\n⚠️ <b>Diqqat: Qarzingiz muddati {days_overdue} kundan beri (1 oydan oshgan) kechikmoqda!</b> Iltimos, oylik maoshingizdan qarzingizni yopishingizni so'raymiz."
     elif has_overdue:
-        overdue_warning = "\n⚠️ <b>Diqqat: Qarzingiz 3 kundan beri to'lanmagan!</b>"
+        overdue_warning = "\n⚠️ <b>Diqqat: Qarzingizning to'lov muddati o'tgan!</b>"
     else:
         overdue_warning = ""
 
     text = (
-        f"⏰ <b>Qarzdorlik eslatmasi!</b>\n\n"
+        f"⏰ <b>Oylik qarzdorlik eslatmasi!</b>\n\n"
         f"Assalomu alaykum, <b>{name}</b>! 👋\n\n"
         f"Sizning <b>{shop_name}</b> do'konidan qarzdorligingiz mavjud.\n"
-        f"Iltimos, qarzingizni to'lashingizni so'raymiz:\n\n"
+        f"Oylik maosh hisob-kitobi bo'yicha qarzingizni to'lashingizni so'raymiz:\n\n"
         f"💰 <b>Jami qarzingiz:</b> <b>{total_str}</b>\n\n"
         f"📦 <b>Qarzlar ro'yxati:</b>\n"
         f"{debts_block}\n"
@@ -72,25 +72,22 @@ def build_daily_reminder_text(cust: dict, days_overdue: int = 0) -> str:
 
 async def should_send_sms_to_customer(customer_id: int, total_overdue_count: int, is_manual: bool = False) -> tuple[bool, str]:
     """
-    3 kundan beri to'lamaganlar uchun SMS yuborish qoidasi:
-    1. Agar umumiy 3 kundan beri to'lamaganlar soni >= 3 ta bo'lsa -> har kuni avto SMS yuboriladi.
-    2. Agar 3 tadan kam bo'lsa (1 yoki 2 ta) -> 2 kunda bir marta SMS yuboriladi.
+    Oylik to'lov tartibi:
+    Harbiy xizmatchilar va mijozlarga faqat 1 oyda 1 marta (kamida 25 kun oraliq bilan) eslatma yuboriladi.
+    Har kuni 19:00 da SMS yuborish butunlay to'xtatilgan.
     """
     if is_manual:
         return True, "Admin qo'lda yubordi"
         
-    if total_overdue_count >= 3:
-        return True, f"Qarzdorlar soni {total_overdue_count} >= 3 ta (har kunlik avto-SMS)"
-        
-    # Agar 3 tadan kam bo'lsa -> oxirgi muvaffaqiyatli SMS vaqtini tekshirish
+    # Oxirgi muvaffaqiyatli xabarnoma vaqtini tekshirish
     last_log = await db_fetch_one("""
         SELECT sent_at FROM notifications_log
-        WHERE customer_id = ? AND type = 'daily_19pm' AND success = TRUE
+        WHERE customer_id = ? AND (type = 'monthly_reminder' OR type = 'daily_19pm') AND success = TRUE
         ORDER BY id DESC LIMIT 1
     """, customer_id)
     
     if not last_log or not last_log.get("sent_at"):
-        return True, "Oxirgi 2 kunda SMS yuborilmagan (birinchi yuborish)"
+        return True, "Oxirgi 1 oyda eslatma yuborilmagan (birinchi yuborish)"
         
     sent_at_val = last_log["sent_at"]
     if isinstance(sent_at_val, str):
@@ -106,16 +103,16 @@ async def should_send_sms_to_customer(customer_id: int, total_overdue_count: int
     now_dt = datetime.now(sent_dt.tzinfo if sent_dt.tzinfo else ZoneInfo("Asia/Tashkent"))
     days_diff = (now_dt.date() - sent_dt.date()).days
     
-    if days_diff >= 2:
-        return True, f"Oxirgi SMS dan {days_diff} kun o'tdi (2 kunda 1 marta qoidasi)"
+    if days_diff >= 25:
+        return True, f"Oxirgi eslatmadan {days_diff} kun o'tdi (1 oyda 1 marta qoidasi)"
     else:
-        return False, "Kecha SMS yuborilgan (2 kunda 1 marta qoidasi bo'yicha bugun oraliq kun)"
+        return False, f"Yaqinda ({days_diff} kun oldin) eslatma borgan (1 oyda 1 marta yuboriladi)"
 
 def build_admin_summary_messages(shop_name: str, total_count: int, total_amount: float,
                                  overdue_3days_list: list, sent_list: list, 
                                  skipped_list: list, unlinked_list: list, 
                                  failed_list: list) -> List[str]:
-    """Admin uchun 19:00 xabarnomasi — 3 kundan beri to'lamaganlar ro'yxati va SMS hisoboti"""
+    """Admin uchun oylik qarzdorlik va eslatmalar hisoboti"""
     now_dt = datetime.now(ZoneInfo("Asia/Tashkent"))
     date_str = now_dt.strftime("%d.%m.%Y")
     
@@ -123,67 +120,60 @@ def build_admin_summary_messages(shop_name: str, total_count: int, total_amount:
     total_overdue_sum = sum(float(c.get("debt", 0)) for c in overdue_3days_list)
     total_not_sent = len(unlinked_list) + len(failed_list)
     
-    if total_overdue >= 3:
-        sms_rule_desc = f"Har kunlik avto-SMS (3 kundan beri to'lamaganlar: {total_overdue} ta >= 3)"
-    elif total_overdue > 0:
-        sms_rule_desc = f"2 kunda 1 marta avto-SMS (3 kundan beri to'lamaganlar: {total_overdue} ta < 3)"
-    else:
-        sms_rule_desc = "3 kundan beri to'lamaganlar yo'q"
-        
     summary_header = (
-        f"⏰ <b>19:00 KUNLIK QARZDORLIK VA ESLATMALAR HISOBOTI</b>\n"
+        f"⏰ <b>OYLIK QARZDORLIK VA ESLATMALAR HISOBOTI</b>\n"
         f"🏪 Do'kon: <b>{esc(shop_name)}</b>\n"
-        f"📅 Sana: <b>{date_str} | 19:00</b>\n\n"
-        f"📊 <b>Umumiy natijalar:</b>\n"
+        f"📅 Sana: <b>{date_str}</b>\n\n"
+        f"📊 <b>Umumiy ko'rsatkichlar:</b>\n"
         f"• Jami qarzdorlar: <b>{total_count} ta</b> (💰 <b>{format_amount(total_amount)}</b>)\n"
-        f"• 🚨 <b>3 kundan beri to'lamaganlar:</b> <b>{total_overdue} ta</b> (💰 <b>{format_amount(total_overdue_sum)}</b>)\n"
-        f"• ⚙️ <b>SMS tartibi:</b> <i>{sms_rule_desc}</i>\n"
-        f"• 🟢 <b>SMS borganlar:</b> <b>{len(sent_list)} ta</b>\n"
-        f"• ⏸️ <b>2 kunda bir rejimidagilar:</b> <b>{len(skipped_list)} ta</b>\n"
-        f"• ⚠️ <b>SMS bormaganlar:</b> <b>{total_not_sent} ta</b>\n"
+        f"• 🚨 <b>Muddati o'tgan (1 oydan oshgan):</b> <b>{total_overdue} ta</b> (💰 <b>{format_amount(total_overdue_sum)}</b>)\n"
+        f"• ⚙️ <b>SMS tartibi:</b> <i>Harbiy xizmatchilar uchun 1 oyda 1 marta</i>\n"
+        f"• 🟢 <b>Eslatma borganlar:</b> <b>{len(sent_list)} ta</b>\n"
+        f"• ⏸️ <b>Oraliq muddatdagilar (1 oy to'lmagan):</b> <b>{len(skipped_list)} ta</b>\n"
+        f"• ⚠️ <b>Eslatma bormaganlar:</b> <b>{total_not_sent} ta</b>\n"
     )
     
     if total_count == 0 and total_overdue == 0:
-        return [summary_header + "\n✅ <i>Bugun do'konda faol qarzdorliklar mavjud emas. Barcha hisob-kitoblar joyida!</i>"]
+        return [summary_header + "\n✅ <i>Do'konda faol qarzdorliklar mavjud emas. Barcha hisob-kitoblar joyida!</i>"]
         
     lines = []
     
-    # 1. 3 KUNDAN BERI TO'LAMAGANLARNING TO'LIQ RO'YXATI (FOYDALANUVCHI TALABI)
+    # 1. MUDDATI O'TGANLAR RO'YXATI
     if overdue_3days_list:
-        lines.append(f"\n🚨 <b>3 kundan beri qarzini to'lamagan mijozlar ro'yxati ({len(overdue_3days_list)} ta):</b>")
+        lines.append(f"\n🚨 <b>Muddati o'tgan qarzdorlar ro'yxati ({len(overdue_3days_list)} ta):</b>")
         for i, c in enumerate(overdue_3days_list, 1):
             phone_str = f" ({c['phone']})" if c.get("phone") else ""
-            days_str = f"<b>{c.get('days_overdue', 3)} kundan beri to'lamagan</b>"
+            days_str = f"<b>{c.get('days_overdue', 30)} kundan beri to'lamagan</b>"
             lines.append(f"{i}. <b>{esc(c['name'])}</b>{esc(phone_str)} — <b>{format_amount(c['debt'])}</b> ({days_str})")
     else:
-        lines.append("\n✅ <i>3 kundan beri to'lamagan qarzdorlar mavjud emas!</i>")
+        lines.append("\n✅ <i>Muddati o'tgan qarzdorlar mavjud emas!</i>")
         
-    # 2. SMS BORGANLAR
+    # 2. ESLATMA BORGANLAR
     if sent_list:
-        lines.append(f"\n🟢 <b>SMS (eslatma) borgan mijozlar ({len(sent_list)} ta):</b>")
+        lines.append(f"\n🟢 <b>Eslatma borgan mijozlar ({len(sent_list)} ta):</b>")
         for i, c in enumerate(sent_list, 1):
             phone_str = f" ({c['phone']})" if c.get("phone") else ""
-            days_info = f" ({c.get('days_overdue')} kundan beri to'lamagan)" if c.get('days_overdue') else ""
+            days_info = f" ({c.get('days_overdue')} kun kechikkan)" if c.get('days_overdue') else ""
             lines.append(f"{i}. <b>{esc(c['name'])}</b>{esc(phone_str)} — <b>{format_amount(c['debt'])}</b>{days_info}")
             
-    # 3. 2 KUNDA BIR REJIMIDAGI ORALIQ KUN
+    # 3. ORALIQ MUDDATDAGILAR
     if skipped_list:
-        lines.append(f"\n⏸️ <b>2 kunda 1 marta qoidasi bo'yicha bugun oraliq kun ({len(skipped_list)} ta):</b>")
+        lines.append(f"\n⏸️ <b>1 oyda 1 marta qoidasi bo'yicha oraliq muddat ({len(skipped_list)} ta):</b>")
         for i, c in enumerate(skipped_list, 1):
             phone_str = f" ({c['phone']})" if c.get("phone") else ""
-            lines.append(f"{i}. <b>{esc(c['name'])}</b>{esc(phone_str)} — <b>{format_amount(c['debt'])}</b> <i>(Kecha yuborilgan, navbatdagi ertaga)</i>")
+            lines.append(f"{i}. <b>{esc(c['name'])}</b>{esc(phone_str)} — <b>{format_amount(c['debt'])}</b> <i>(Yaqinda eslatma borgan)</i>")
             
     # 4. BOTGA ULANMAGANLAR (TELEGRAM ID YO'Q)
     if unlinked_list:
-        lines.append(f"\n🟡 <b>SMS bormagan — Botga ulanmaganlar ({len(unlinked_list)} ta):</b>")
+        lines.append(f"\n🟡 <b>Eslatma bormagan — Botga ulanmaganlar ({len(unlinked_list)} ta):</b>")
         for i, c in enumerate(unlinked_list, 1):
             phone_str = f" ({c['phone']})" if c.get("phone") else ""
-            days_info = f" ({c.get('days_overdue')} kundan beri to'lamagan)" if c.get('days_overdue') else ""
+            days_info = f" ({c.get('days_overdue')} kun kechikkan)" if c.get('days_overdue') else ""
             lines.append(f"{i}. <b>{esc(c['name'])}</b>{esc(phone_str)} — <b>{format_amount(c['debt'])}</b>{days_info} <i>(Botni ochmagan)</i>")
             
-    # 5. YUBORISHDA XATOLIK BO'LGANLAR (MASALAN BOT BLOKLANGAN)
+    # 5. YUBORISHDA XATOLIK BO'LGANLAR
     if failed_list:
-        lines.append(f"\n🔴 <b>SMS bormagan — Xatolik bo'lganlar ({len(failed_list)} ta):</b>")
+        lines.append(f"\n🔴 <b>Eslatma bormagan — Xatolik bo'lganlar ({len(failed_list)} ta):</b>")
         for i, c in enumerate(failed_list, 1):
             phone_str = f" ({c['phone']})" if c.get("phone") else ""
             reason_str = f" — <i>{esc(c.get('reason', 'Xato'))}</i>"
@@ -234,15 +224,15 @@ async def get_shop_admin_ids(shop_id: str, manual_admin_id: Optional[int] = None
     return list(admin_ids)
 
 async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
-    """Kunlik eslatmalar — har kuni kechqurun soat 19:00 da Toshkent vaqtida
-    va har bir adminning o'ziga 3 kundan beri to'lamaganlar ro'yxati va SMS hisoboti"""
-    logger.info("⏰ Kunlik eslatmalar (19:00) yuborilishi boshlandi...")
+    """Oylik qarz eslatmalari — harbiy xizmatchilar va mijozlarga oyiga 1 marta
+    va har bir adminning o'ziga muddati o'tganlar ro'yxati hamda eslatmalar hisoboti"""
+    logger.info("⏰ Oylik qarz eslatmalari yuborilishi boshlandi...")
     
-    # 1. 3 kundan oshgan qarzlarni yangilash
+    # 1. Muddati o'tgan qarzlarni yangilash
     try:
         overdue_count = await update_overdue_statuses()
         if overdue_count > 0:
-            logger.info("🔴 Qarzlar muddati (3 kundan beri to'lamagan) yangilandi.")
+            logger.info("🔴 Qarzlar muddati holatlari yangilandi.")
     except Exception as e:
         logger.error(f"❌ Qarz holatlarini yangilashda xatolik: {e}")
 
@@ -259,7 +249,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
     shops_data: Dict[str, dict] = {}
     
     for cust in customers:
-        shop_id = cust.get("shop_id") or "DEFAULT"
+        shop_id = cust.get("shop_id") or "64EB6AB2"
         if shop_id not in shops_data:
             shops_data[shop_id] = {
                 "shop_name": cust.get("shop_name") or "Do'kon",
@@ -280,7 +270,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
         shops_data[shop_id]["total_debt"] += c_debt
         shops_data[shop_id]["customers"].append(cust)
         
-        # 3 kundan beri to'lanmaganligini aniqlash
+        # Muddati o'tganligini aniqlash (1 oy / 30 kunlik sikl)
         overdue_debts = []
         max_days_overdue = 0
         for d in cust.get("debts", []):
@@ -298,19 +288,19 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                 due_dt = today_dt
                 
             days_diff = (today_dt - due_dt).days
-            if days_diff >= 3 or d.get("status") == "overdue":
-                d["days_overdue"] = max(days_diff, 3)
+            if (days_diff >= 30 or d.get("status") == "overdue") and days_diff > 0:
+                d["days_overdue"] = max(days_diff, 30)
                 overdue_debts.append(d)
                 if d["days_overdue"] > max_days_overdue:
                     max_days_overdue = d["days_overdue"]
             else:
                 d["days_overdue"] = max(days_diff, 0)
                 
-        is_3days = (len(overdue_debts) > 0)
-        cust["is_3days_overdue"] = is_3days
+        is_overdue = (len(overdue_debts) > 0)
+        cust["is_3days_overdue"] = is_overdue
         cust["max_days_overdue"] = max_days_overdue
         
-        if is_3days:
+        if is_overdue:
             shops_data[shop_id]["overdue_3days"].append({
                 "name": c_name,
                 "phone": c_phone,
@@ -323,8 +313,8 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
 
     # Agar umuman qarzdor bo'lmasa, default shop uchun hisobot tayyorlash
     if not shops_data:
-        shops_data["DEFAULT"] = {
-            "shop_name": "Do'kon",
+        shops_data["64EB6AB2"] = {
+            "shop_name": "Kech Harbiy Do'kon",
             "total_debt": 0.0,
             "customers": [],
             "overdue_3days": [],
@@ -334,7 +324,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
             "failed": []
         }
 
-    # 3. SMS yuborish va hisobot tayyorlash
+    # 3. Eslatma yuborish va hisobot tayyorlash
     total_sent = 0
     total_skipped = 0
     total_unlinked = 0
@@ -342,12 +332,12 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
     total_overdue_all_shops = 0
     
     for shop_id, sdata in shops_data.items():
-        overdue_3days = sdata["overdue_3days"]
-        total_overdue_count = len(overdue_3days)
+        overdue_list = sdata["overdue_3days"]
+        total_overdue_count = len(overdue_list)
         total_overdue_all_shops += total_overdue_count
         
-        # 3 kundan beri to'lamagan mijozlarga SMS yuborish
-        for c_item in overdue_3days:
+        # Muddati o'tgan mijozlarga eslatma yuborish (1 oyda 1 marta)
+        for c_item in overdue_list:
             cust = c_item["cust_obj"]
             c_name = c_item["name"]
             c_phone = c_item["phone"]
@@ -355,7 +345,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
             tg_id = c_item["telegram_id"]
             days_overdue = c_item["days_overdue"]
             
-            # Telegram ID yo'q bo'lsa -> SMS bormadi (botga ulanmagan)
+            # Telegram ID yo'q bo'lsa -> eslatma bormadi (botga ulanmagan)
             if not tg_id:
                 sdata["unlinked"].append({
                     "name": c_name,
@@ -366,7 +356,7 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                 })
                 continue
                 
-            # 2 kunda bir marta vs har kuni qoidasini tekshirish
+            # 1 oyda 1 marta qoidasini tekshirish (kamida 25 kun oraliq)
             should_send, reason = await should_send_sms_to_customer(
                 customer_id=cust["customer_id"],
                 total_overdue_count=total_overdue_count,
@@ -383,9 +373,10 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                 })
                 continue
                 
-            # SMS yuborish
+            # Eslatma yuborish
             text = build_daily_reminder_text(cust, days_overdue=days_overdue)
-            web_app_url = f"https://dokon-qarzlari-wf96.onrender.com/?role=customer&customer_id={cust['customer_id']}&shop_id=64EB6AB2&v=2.5"
+            base_url = "https://dokon-qarzlari-wf96.onrender.com"
+            web_app_url = f"{base_url}/?role=customer&customer_id={cust['customer_id']}&shop_id=64EB6AB2&v=4.2"
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="📱 Mening qarzlarim (Mini App)", web_app=WebAppInfo(url=web_app_url))]
             ])
@@ -406,8 +397,8 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                 })
                 for d in cust.get("debts", []):
                     await mark_reminder_sent(d["debt_id"])
-                    await log_notification(d["debt_id"], cust["customer_id"], "daily_19pm", True)
-                logger.info(f"✅ 19:00 eslatma yuborildi: {c_name} (TG: {tg_id})")
+                    await log_notification(d["debt_id"], cust["customer_id"], "monthly_reminder", True)
+                logger.info(f"✅ Oylik eslatma yuborildi: {c_name} (TG: {tg_id})")
             except Exception as ex:
                 err_str = str(ex)
                 if "blocked" in err_str.lower():
@@ -426,8 +417,8 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                     "reason": reason
                 })
                 for d in cust.get("debts", []):
-                    await log_notification(d["debt_id"], cust["customer_id"], "daily_19pm", False, err_str)
-                logger.warning(f"❌ 19:00 eslatma yuborilmadi ({c_name}): {ex}")
+                    await log_notification(d["debt_id"], cust["customer_id"], "monthly_reminder", False, err_str)
+                logger.warning(f"❌ Eslatma yuborilmadi ({c_name}): {ex}")
 
         total_sent += len(sdata["sent"])
         total_skipped += len(sdata["skipped_2day"])
@@ -455,8 +446,8 @@ async def send_reminders(bot, manual_admin_id: Optional[int] = None) -> dict:
                     logger.warning(f"⚠️ Admin ({aid}) ga hisobot yuborilmadi: {aex}")
                     
     logger.info(
-        f"⏰ 19:00 eslatmalar yakunlandi: Jami: {len(customers)}, 3 kundan beri to'lamagan: {total_overdue_all_shops}, "
-        f"Yuborildi: {total_sent}, 2 kunda bir oraliq: {total_skipped}, Botga ulanmagan: {total_unlinked}, Xato: {total_failed}"
+        f"⏰ Oylik eslatmalar yakunlandi: Jami: {len(customers)}, Muddati o'tgan: {total_overdue_all_shops}, "
+        f"Yuborildi: {total_sent}, Oraliq muddat: {total_skipped}, Botga ulanmagan: {total_unlinked}, Xato: {total_failed}"
     )
     return {
         "total": len(customers),
@@ -490,13 +481,13 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
     """Scheduler yaratish va ishga sozlash"""
     scheduler = AsyncIOScheduler(timezone="Asia/Tashkent")
     
-    # Har kuni kechqurun soat 19:00 da barcha qarzdor mijozlarga eslatma va adminga hisobot
+    # Har oyning 1-sanasida kechqurun soat 18:00 da barcha qarzdor mijozlarga eslatma va adminga hisobot
     scheduler.add_job(
         send_reminders,
-        trigger=CronTrigger(hour=19, minute=0, timezone="Asia/Tashkent"),
+        trigger=CronTrigger(day=1, hour=18, minute=0, timezone="Asia/Tashkent"),
         args=[bot],
-        id="daily_reminders_19pm",
-        name="Har kuni 19:00 qarz eslatmalari va Admin hisoboti",
+        id="monthly_reminders",
+        name="Har oyning 1-sanasida 18:00 oylik qarz eslatmalari va Admin hisoboti",
         replace_existing=True,
         misfire_grace_time=7200
     )
